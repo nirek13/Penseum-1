@@ -75,7 +75,7 @@ export default class FallingObjectsSystem {
   private spawnRandomObject() {
     if (!this.playerSprite) return;
 
-    const objectTypes: Array<keyof typeof this.getObjectConfig> = ['rock', 'spike', 'bomb', 'ice', 'acid'];
+    const objectTypes: FallingObject['type'][] = ['rock', 'spike', 'bomb', 'ice', 'acid'];
     const weights = [0.4, 0.3, 0.15, 0.1, 0.05]; // Probability weights
     
     const randomType = this.weightedRandom(objectTypes, weights);
@@ -444,41 +444,69 @@ export default class FallingObjectsSystem {
   }
 
   private createSpawnEffect(x: number, y: number) {
-    // Warning indicator before object spawns
-    const warning = this.scene.add.circle(x, y + 30, 20, 0xff0000, 0.3);
-    warning.setStrokeStyle(3, 0xff0000, 0.8);
+    // Enhanced warning indicator with premium effects
+    const warningOuter = this.scene.add.circle(x, y + 30, 25, 0xFF4444, 0.2);
+    const warning = this.scene.add.circle(x, y + 30, 20, 0xFF0000, 0.4);
+    const warningInner = this.scene.add.circle(x, y + 30, 15, 0xFF6666, 0.6);
+    
+    warningOuter.setStrokeStyle(2, 0xFF0000, 0.6);
+    warning.setStrokeStyle(3, 0xFF0000, 0.9);
+    warningInner.setStrokeStyle(1, 0xFFFFFF, 0.8);
 
+    // Multi-layer pulsing animation
     this.scene.tweens.add({
-      targets: warning,
-      scaleX: 1.5,
-      scaleY: 1.5,
+      targets: [warningOuter, warning, warningInner],
+      scaleX: 1.8,
+      scaleY: 1.8,
       alpha: 0,
-      duration: 500,
+      duration: 600,
       ease: 'Power2.easeOut',
-      onComplete: () => warning.destroy()
+      onComplete: () => {
+        warningOuter.destroy();
+        warning.destroy();
+        warningInner.destroy();
+      }
     });
+    
+    // Add ripple effect
+    for (let i = 0; i < 3; i++) {
+      const ripple = this.scene.add.circle(x, y + 30, 10, undefined);
+      ripple.setStrokeStyle(2, 0xFF4444, 0.6);
+      
+      this.scene.tweens.add({
+        targets: ripple,
+        radius: 40 + (i * 10),
+        alpha: 0,
+        duration: 800 + (i * 200),
+        ease: 'Sine.easeOut',
+        onComplete: () => ripple.destroy()
+      });
+    }
   }
 
   private createImpactEffect(x: number, y: number, type: FallingObject['type']) {
     const colors = {
-      rock: 0x8B4513,
-      spike: 0xFF0000,
-      bomb: 0xFF4500,
-      ice: 0x87CEEB,
-      acid: 0x32CD32
+      rock: { main: 0x8B4513, secondary: 0xD2691E, accent: 0xF4A460 },
+      spike: { main: 0xFF0000, secondary: 0xFF4444, accent: 0xFF6666 },
+      bomb: { main: 0xFF4500, secondary: 0xFF6347, accent: 0xFFFF00 },
+      ice: { main: 0x87CEEB, secondary: 0xADD8E6, accent: 0xFFFFFF },
+      acid: { main: 0x32CD32, secondary: 0x7FFF00, accent: 0x9AFF9A }
     };
+    
+    const colorSet = colors[type] || { main: 0xFFFFFF, secondary: 0xCCCCCC, accent: 0x999999 };
 
-    // Create impact particles
-    for (let i = 0; i < 6; i++) {
+    // Enhanced impact particles with multiple sizes and colors
+    for (let i = 0; i < 10; i++) {
+      const colorChoice = i < 4 ? colorSet.main : i < 7 ? colorSet.secondary : colorSet.accent;
       const particle = this.scene.add.circle(
-        x + Phaser.Math.Between(-10, 10),
-        y + Phaser.Math.Between(-10, 10),
-        Phaser.Math.Between(3, 8),
-        colors[type] || 0xFFFFFF
+        x + Phaser.Math.Between(-15, 15),
+        y + Phaser.Math.Between(-15, 15),
+        Phaser.Math.Between(2, 12),
+        colorChoice
       );
 
-      const velocityX = Phaser.Math.Between(-150, 150);
-      const velocityY = Phaser.Math.Between(-200, -50);
+      const velocityX = Phaser.Math.Between(-200, 200);
+      const velocityY = Phaser.Math.Between(-250, -60);
 
       this.scene.tweens.add({
         targets: particle,
@@ -487,25 +515,54 @@ export default class FallingObjectsSystem {
         alpha: 0,
         scaleX: 0,
         scaleY: 0,
-        duration: 600,
+        rotation: Math.PI * 2,
+        duration: 800 + Phaser.Math.Between(0, 400),
         ease: 'Power2.easeOut',
         onComplete: () => particle.destroy()
       });
     }
+    
+    // Add impact flash
+    const flash = this.scene.add.circle(x, y, 30, 0xFFFFFF, 0.8);
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 2,
+      scaleY: 2,
+      duration: 200,
+      ease: 'Power2.easeOut',
+      onComplete: () => flash.destroy()
+    });
+    
+    // Add shockwave
+    const shockwave = this.scene.add.circle(x, y, 5, undefined);
+    shockwave.setStrokeStyle(4, colorSet.main, 0.8);
+    
+    this.scene.tweens.add({
+      targets: shockwave,
+      radius: 50,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2.easeOut',
+      onComplete: () => shockwave.destroy()
+    });
   }
 
   private createExplosion(x: number, y: number) {
-    // Large explosion effect
-    for (let i = 0; i < 12; i++) {
+    // Enhanced explosion with multiple layers
+    
+    // Core explosion particles
+    for (let i = 0; i < 16; i++) {
+      const colors = [0xFF4500, 0xFF0000, 0xFF6347, 0xFFFF00, 0xFFA500];
       const particle = this.scene.add.circle(
-        x + Phaser.Math.Between(-20, 20),
-        y + Phaser.Math.Between(-20, 20),
-        Phaser.Math.Between(8, 15),
-        Phaser.Math.Choose([0xFF4500, 0xFF0000, 0xFFFF00])
+        x + Phaser.Math.Between(-25, 25),
+        y + Phaser.Math.Between(-25, 25),
+        Phaser.Math.Between(8, 20),
+        Phaser.Utils.Array.GetRandom(colors)
       );
 
-      const velocityX = Phaser.Math.Between(-300, 300);
-      const velocityY = Phaser.Math.Between(-400, -100);
+      const velocityX = Phaser.Math.Between(-350, 350);
+      const velocityY = Phaser.Math.Between(-450, -120);
 
       this.scene.tweens.add({
         targets: particle,
@@ -514,14 +571,70 @@ export default class FallingObjectsSystem {
         alpha: 0,
         scaleX: 0,
         scaleY: 0,
-        duration: 1200,
+        rotation: Math.PI * 3,
+        duration: 1400 + Phaser.Math.Between(0, 600),
         ease: 'Power2.easeOut',
         onComplete: () => particle.destroy()
       });
     }
+    
+    // Secondary debris particles
+    for (let i = 0; i < 8; i++) {
+      const debris = this.scene.add.rectangle(
+        x + Phaser.Math.Between(-15, 15),
+        y + Phaser.Math.Between(-15, 15),
+        Phaser.Math.Between(3, 8),
+        Phaser.Math.Between(3, 8),
+        0x4A4A4A
+      );
 
-    // Screen shake
-    this.scene.cameras.main.shake(400, 0.03);
+      const velocityX = Phaser.Math.Between(-200, 200);
+      const velocityY = Phaser.Math.Between(-300, -80);
+
+      this.scene.tweens.add({
+        targets: debris,
+        x: debris.x + velocityX,
+        y: debris.y + velocityY,
+        alpha: 0,
+        rotation: Math.PI * 4,
+        duration: 1000,
+        ease: 'Power2.easeOut',
+        onComplete: () => debris.destroy()
+      });
+    }
+    
+    // Explosion flash
+    const explosionFlash = this.scene.add.circle(x, y, 50, 0xFFFFFF, 0.9);
+    this.scene.tweens.add({
+      targets: explosionFlash,
+      alpha: 0,
+      scaleX: 3,
+      scaleY: 3,
+      duration: 300,
+      ease: 'Power2.easeOut',
+      onComplete: () => explosionFlash.destroy()
+    });
+    
+    // Explosion shockwave rings
+    for (let i = 0; i < 3; i++) {
+      const ring = this.scene.add.circle(x, y, 20, undefined);
+      ring.setStrokeStyle(6 - (i * 2), 0xFF4500, 0.8 - (i * 0.2));
+      
+      this.scene.tweens.add({
+        targets: ring,
+        radius: 80 + (i * 20),
+        alpha: 0,
+        duration: 600 + (i * 200),
+        ease: 'Power2.easeOut',
+        onComplete: () => ring.destroy()
+      });
+    }
+
+    // Enhanced screen shake with intensity falloff
+    this.scene.cameras.main.shake(500, 0.04);
+    
+    // Screen flash
+    this.scene.cameras.main.flash(200, 255, 100, 0, false);
   }
 
   // Method to adjust difficulty

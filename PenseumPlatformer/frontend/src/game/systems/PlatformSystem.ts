@@ -79,7 +79,7 @@ export default class PlatformSystem {
         height: platformHeight,
         answer,
         isCorrect,
-        color: isCorrect ? '#7C3AED' : '#000000', // Penseum colors
+        color: isCorrect ? '#6F47EB' : '#FFFFFF', // Updated purple and white colors
         id: `platform-${index}`
       };
       
@@ -109,7 +109,7 @@ export default class PlatformSystem {
         this.spawnPatrollingEnemy(x, y, platformWidth);
         
         // Add visual indicator for patrol platforms
-        const patrolIndicator = this.scene.add.circle(x + platformWidth/2, y - 20, 8, 0xff4444);
+        const patrolIndicator = this.scene.add.circle(x + platformWidth/2, y - 20, 8, 0x6F47EB);
         patrolIndicator.setAlpha(0.7);
         this.scene.tweens.add({
           targets: patrolIndicator,
@@ -167,7 +167,7 @@ export default class PlatformSystem {
       0xFFFFFF,
       1
     );
-    this.questionBackground.setStrokeStyle(2, 0x7C3AED, 1);
+    this.questionBackground.setStrokeStyle(2, 0x6F47EB, 1);
     
     this.questionText = this.scene.add.text(
       this.scene.cameras.main.width / 2,
@@ -211,7 +211,7 @@ export default class PlatformSystem {
       `${question.points} pts`,
       {
         fontSize: '14px',
-        color: '#ffd93d',
+        color: '#6F47EB',
         fontFamily: 'Arial',
         fontStyle: 'bold'
       }
@@ -229,10 +229,10 @@ export default class PlatformSystem {
 
   private getDifficultyColor(difficulty: string): number {
     switch (difficulty) {
-      case 'easy': return 0x7C3AED;     // Penseum purple for easy
-      case 'medium': return 0x000000;   // Black for medium  
-      case 'hard': return 0x4B5563;     // Gray for hard
-      default: return 0x6B7280;         // Default gray
+      case 'easy': return 0x6F47EB;     // Updated purple for easy
+      case 'medium': return 0x6F47EB;   // Purple for medium  
+      case 'hard': return 0x6F47EB;     // Purple for hard
+      default: return 0x6F47EB;         // Default purple
     }
   }
 
@@ -667,7 +667,7 @@ const MIN_VERTICAL_SPACING = 40;   // pixels
   private createBreakingParticles(x: number, y: number) {
     // Create debris particles
     for (let i = 0; i < 8; i++) {
-      const particle = this.scene.add.rectangle(x, y, 6, 6, 0xEF4444);
+      const particle = this.scene.add.rectangle(x, y, 6, 6, 0x6F47EB);
       
       const velocityX = Phaser.Math.Between(-200, 200);
       const velocityY = Phaser.Math.Between(-300, -100);

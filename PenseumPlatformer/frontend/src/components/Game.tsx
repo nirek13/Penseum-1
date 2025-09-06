@@ -76,7 +76,7 @@ const Game: React.FC<GameProps> = ({ playerName, onGameOver }) => {
       />
       <div style={{
         position: 'absolute',
-        top: '20px',
+        top: '56px',
         left: '50%',
         transform: 'translateX(-50%)',
         background: '#FFFFFF',

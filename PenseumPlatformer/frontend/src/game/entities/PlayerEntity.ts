@@ -20,6 +20,13 @@ export default class PlayerEntity {
   private hasDoubleJump: boolean = false;
   private canDoubleJump: boolean = false;
   private doubleJumpTimer: number = 0;
+  
+  // Super jump states
+  private isSuperJumpCharging: boolean = false;
+  private superJumpCharge: number = 0;
+  private maxSuperJumpCharge: number = 2000; // 2 seconds to full charge
+  private superJumpIndicator?: Phaser.GameObjects.Graphics;
+  private chargingEffect?: Phaser.GameObjects.Sprite;
 
   // Knockback and damage states
   private isKnockedBack: boolean = false;
@@ -92,6 +99,12 @@ export default class PlayerEntity {
       }
     }
 
+    // Update super jump charging
+    if (this.isSuperJumpCharging) {
+      this.superJumpCharge = Math.min(this.superJumpCharge + delta, this.maxSuperJumpCharge);
+      this.updateSuperJumpIndicator();
+    }
+
     // Update knockback
     if (this.isKnockedBack) {
       this.knockbackTimer -= delta;
@@ -118,6 +131,15 @@ export default class PlayerEntity {
     if (this.jetpackEffect) {
       this.jetpackEffect.setPosition(this.sprite.x, this.sprite.y + 8);
       this.jetpackEffect.rotation += 0.1;
+    }
+
+    if (this.superJumpIndicator) {
+      this.superJumpIndicator.setPosition(this.sprite.x, this.sprite.y - 30);
+    }
+
+    if (this.chargingEffect) {
+      this.chargingEffect.setPosition(this.sprite.x, this.sprite.y);
+      this.chargingEffect.rotation += 0.08;
     }
   }
 
@@ -354,6 +376,196 @@ export default class PlayerEntity {
     this.scene.cameras.main.shake(400, 0.02);
   }
 
+  startSuperJumpCharge() {
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    
+    // Can only charge super jump when on ground
+    if (!body.touching.down) return false;
+    
+    this.isSuperJumpCharging = true;
+    this.superJumpCharge = 0;
+    
+    // Create charging visual effects
+    this.createSuperJumpIndicator();
+    this.createChargingEffect();
+    
+    // Player glows while charging
+    this.sprite.setTint(0x6F47EB);
+    
+    return true;
+  }
+
+  cancelSuperJumpCharge() {
+    this.isSuperJumpCharging = false;
+    this.superJumpCharge = 0;
+    
+    // Remove visual effects
+    this.removeSuperJumpIndicator();
+    this.removeChargingEffect();
+    
+    // Remove tint
+    this.sprite.clearTint();
+  }
+
+  releaseSuperJump() {
+    if (!this.isSuperJumpCharging) return false;
+    
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    
+    // Calculate jump power based on charge (50% to 200% of normal jump)
+    const chargeRatio = this.superJumpCharge / this.maxSuperJumpCharge;
+    const baseJumpPower = GameConfig.JUMP_VELOCITY;
+    const superJumpPower = baseJumpPower * (0.5 + chargeRatio * 1.5);
+    
+    // Apply super jump
+    body.setVelocityY(-superJumpPower);
+    
+    // Create super jump effects based on charge level
+    this.createSuperJumpEffects(chargeRatio);
+    
+    // Clean up charging state
+    this.cancelSuperJumpCharge();
+    
+    // Screen shake intensity based on charge
+    const shakeIntensity = 0.01 + (chargeRatio * 0.02);
+    this.scene.cameras.main.shake(200 + (chargeRatio * 300), shakeIntensity);
+    
+    return true;
+  }
+
+  private createSuperJumpIndicator() {
+    this.superJumpIndicator = this.scene.add.graphics();
+    this.superJumpIndicator.setDepth(1000);
+    this.updateSuperJumpIndicator();
+  }
+
+  private updateSuperJumpIndicator() {
+    if (!this.superJumpIndicator) return;
+    
+    const chargeRatio = this.superJumpCharge / this.maxSuperJumpCharge;
+    const barWidth = 40;
+    const barHeight = 6;
+    
+    this.superJumpIndicator.clear();
+    
+    // Background bar
+    this.superJumpIndicator.fillStyle(0x000000, 0.5);
+    this.superJumpIndicator.fillRoundedRect(-barWidth/2, 0, barWidth, barHeight, 3);
+    
+    // Charge bar - color changes with charge level
+    let chargeColor = 0x6F47EB;
+    if (chargeRatio > 0.5) chargeColor = 0xFFFFFF;
+    if (chargeRatio >= 1.0) chargeColor = 0x6F47EB;
+    
+    this.superJumpIndicator.fillStyle(chargeColor, 0.9);
+    this.superJumpIndicator.fillRoundedRect(-barWidth/2, 0, barWidth * chargeRatio, barHeight, 3);
+    
+    // Pulsing effect when fully charged
+    if (chargeRatio >= 1.0) {
+      this.scene.tweens.add({
+        targets: this.superJumpIndicator,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 200,
+        yoyo: true,
+        repeat: 0,
+        ease: 'Power2.easeOut'
+      });
+    }
+  }
+
+  private createChargingEffect() {
+    this.chargingEffect = this.scene.add.sprite(this.sprite.x, this.sprite.y, 'player');
+    this.chargingEffect.setTint(0x6F47EB);
+    this.chargingEffect.setAlpha(0.3);
+    this.chargingEffect.setScale(1.2);
+    
+    // Pulsing charging effect
+    this.scene.tweens.add({
+      targets: this.chargingEffect,
+      alpha: 0.6,
+      scaleX: 1.5,
+      scaleY: 1.5,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createSuperJumpEffects(chargeRatio: number) {
+    // Create jump particles based on charge level
+    const particleCount = Math.floor(8 + chargeRatio * 12);
+    const particleColor = chargeRatio >= 1.0 ? 0xFFFFFF : 0x6F47EB;
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particle = this.scene.add.circle(
+        this.sprite.x + Phaser.Math.Between(-15, 15),
+        this.sprite.y + Phaser.Math.Between(-10, 10),
+        Phaser.Math.Between(3, 6),
+        particleColor
+      );
+      
+      const velocityX = Phaser.Math.Between(-150, 150);
+      const velocityY = Phaser.Math.Between(-200, -50);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: particle.x + velocityX,
+        y: particle.y + velocityY,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 600 + chargeRatio * 400,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+    
+    // Special effects for fully charged jump
+    if (chargeRatio >= 1.0) {
+      // Create energy rings
+      for (let i = 0; i < 3; i++) {
+        const ring = this.scene.add.circle(this.sprite.x, this.sprite.y, 5 + (i * 8), undefined);
+        ring.setStrokeStyle(3, 0x6F47EB, 0.7);
+        ring.setFillStyle(undefined);
+        
+        this.scene.tweens.add({
+          targets: ring,
+          radius: 30 + (i * 15),
+          alpha: 0,
+          duration: 400 + (i * 100),
+          ease: 'Power2.easeOut',
+          onComplete: () => ring.destroy()
+        });
+      }
+    }
+    
+    // Player animation based on charge
+    const scaleMultiplier = 1.2 + (chargeRatio * 0.6);
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleY: scaleMultiplier,
+      duration: 150,
+      yoyo: true,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  private removeSuperJumpIndicator() {
+    if (this.superJumpIndicator) {
+      this.superJumpIndicator.destroy();
+      this.superJumpIndicator = undefined;
+    }
+  }
+
+  private removeChargingEffect() {
+    if (this.chargingEffect) {
+      this.chargingEffect.destroy();
+      this.chargingEffect = undefined;
+    }
+  }
+
   respawn(x: number, y: number) {
     this.sprite.setPosition(x, y);
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
@@ -407,6 +619,18 @@ export default class PlayerEntity {
 
   getCanDoubleJump() {
     return this.canDoubleJump;
+  }
+
+  getIsSuperJumpCharging() {
+    return this.isSuperJumpCharging;
+  }
+
+  getSuperJumpCharge() {
+    return this.superJumpCharge;
+  }
+
+  getMaxSuperJumpCharge() {
+    return this.maxSuperJumpCharge;
   }
 
   // Knockback and damage methods
@@ -578,6 +802,12 @@ export default class PlayerEntity {
     }
     if (this.jetpackEffect) {
       this.jetpackEffect.destroy();
+    }
+    if (this.superJumpIndicator) {
+      this.superJumpIndicator.destroy();
+    }
+    if (this.chargingEffect) {
+      this.chargingEffect.destroy();
     }
     this.sprite.destroy();
   }

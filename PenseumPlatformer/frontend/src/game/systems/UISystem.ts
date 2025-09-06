@@ -10,12 +10,13 @@ interface FloatingText {
 // Theme colors for easy management
 const THEME = {
   BACKGROUND: 0xffffff, // White primary background
-  HIGHLIGHT: 0x7C3AED,  // Purple highlight: rgb(124, 58, 237)
-  TEXT_LABEL: '#5A5A5A', // A dark gray for labels for readability on white
-  TEXT_VALUE: '#333333', // A near-black for default values
-  SUCCESS: '#2ecc71',
-  WARNING: '#f39c12',
-  DANGER: '#e74c3c'
+  HIGHLIGHT: 0x6F47EB,  // Purple highlight: rgb(111, 71, 235)
+  TEXT_LABEL: '#6F47EB', // Purple for labels
+  TEXT_VALUE: '#1F2937', // Dark gray for values
+  SUCCESS: '#6F47EB',   // Purple for success
+  WARNING: '#6F47EB',   // Purple for warning
+  DANGER: '#6F47EB',    // Purple for danger
+  STREAK: '#6F47EB'     // Purple for streaks
 };
 
 export default class UISystem {
@@ -25,6 +26,7 @@ export default class UISystem {
   private multiplierText?: Phaser.GameObjects.Text;
   private questionCounterText?: Phaser.GameObjects.Text;
   private accuracyText?: Phaser.GameObjects.Text;
+  private streakText?: Phaser.GameObjects.Text;
   private powerUpIndicators: Phaser.GameObjects.Container[] = [];
   private floatingTexts: FloatingText[] = [];
   private livesHearts: Phaser.GameObjects.Sprite[] = [];
@@ -51,19 +53,40 @@ export default class UISystem {
   }
 
   private createUIBackground() {
+    // Enhanced UI background with subtle gradient
     this.uiBackground = this.scene.add.rectangle(
       0, 0,
       this.scene.cameras.main.width,
-      70, // Adjusted height
+      75, // Slightly taller for premium look
       THEME.BACKGROUND,
-      1.0
+      0.95 // Slight transparency for modern look
     );
     this.uiBackground.setOrigin(0, 0);
     this.uiBackground.setDepth(1000);
-    this.uiBackground.setScrollFactor(0); // Pins the UI to the camera
+    this.uiBackground.setScrollFactor(0);
+    
+    // Add subtle gradient overlay
+    const gradientOverlay = this.scene.add.rectangle(
+      0, 0,
+      this.scene.cameras.main.width,
+      75,
+      0xF8FAFC,
+      0.3
+    );
+    gradientOverlay.setOrigin(0, 0);
+    gradientOverlay.setDepth(1000);
+    gradientOverlay.setScrollFactor(0);
 
+    // Enhanced border with shadow effect
+    const shadow = this.scene.add.rectangle(
+      0, 76, this.scene.cameras.main.width, 2, 0x000000, 0.1
+    );
+    shadow.setOrigin(0, 0);
+    shadow.setDepth(999);
+    shadow.setScrollFactor(0);
+    
     this.uiBottomBorder = this.scene.add.rectangle(
-        0, 69, this.scene.cameras.main.width, 1, 0xE5E7EB, 1
+      0, 74, this.scene.cameras.main.width, 2, 0xE2E8F0, 1
     );
     this.uiBottomBorder.setOrigin(0, 0);
     this.uiBottomBorder.setDepth(1001);
@@ -147,6 +170,25 @@ export default class UISystem {
     });
     this.questionCounterText.setDepth(1001);
     this.questionCounterText.setScrollFactor(0);
+    
+    // Add streak display
+    const streakLabel = this.scene.add.text(420, 50, 'STREAK', {
+      fontSize: '12px',
+      color: THEME.TEXT_LABEL,
+      fontFamily: 'Arial',
+      fontStyle: 'bold'
+    });
+    streakLabel.setDepth(1001);
+    streakLabel.setScrollFactor(0);
+    
+    this.streakText = this.scene.add.text(420, 65, '0', {
+      fontSize: '16px',
+      color: THEME.STREAK,
+      fontFamily: 'Arial',
+      fontStyle: 'bold'
+    });
+    this.streakText.setDepth(1001);
+    this.streakText.setScrollFactor(0);
   }
 
   private createAccuracyDisplay() {
@@ -172,17 +214,23 @@ export default class UISystem {
   private createPowerUpIndicators() {
     for (let i = 0; i < 5; i++) {
       const container = this.scene.add.container(
-        this.scene.cameras.main.width - 200 + i * 35,
-        35
+        this.scene.cameras.main.width - 220 + i * 38,
+        38
       );
       
-      const background = this.scene.add.circle(0, 0, 15, 0xE5E7EB, 0.8);
-      const border = this.scene.add.circle(0, 0, 15);
-      border.setStrokeStyle(2, 0xD1D5DB);
+      // Enhanced background with gradient
+      const shadow = this.scene.add.circle(1, 1, 16, 0x000000, 0.1);
+      const background = this.scene.add.circle(0, 0, 16, 0xF1F5F9, 0.9);
+      const innerBg = this.scene.add.circle(0, 0, 14, 0xFFFFFF, 0.8);
+      const border = this.scene.add.circle(0, 0, 16);
+      border.setStrokeStyle(2, 0xE2E8F0);
       
-      container.add([background, border]);
+      // Add subtle inner glow
+      const glow = this.scene.add.circle(0, 0, 18, 0x7C3AED, 0.05);
+      
+      container.add([shadow, glow, background, innerBg, border]);
       container.setDepth(1001);
-      container.setAlpha(0.3);
+      container.setAlpha(0.4);
       container.setScrollFactor(0);
       
       this.powerUpIndicators.push(container);
@@ -195,6 +243,7 @@ export default class UISystem {
     this.updateMultiplier(gameStats.multiplier);
     this.updateQuestionCounter(gameStats.questionsAnswered, 20);
     this.updateAccuracy(gameStats.questionsAnswered, gameStats.correctAnswers);
+    this.updateStreak(gameStats.currentStreak, gameStats.maxStreak);
     this.updatePowerUpIndicators(gameStats);
     this.updateFloatingTexts();
   }
@@ -302,13 +351,39 @@ export default class UISystem {
     }
   }
 
+  private updateStreak(currentStreak: number, maxStreak: number) {
+    if (this.streakText) {
+      this.streakText.setText(`${currentStreak}`);
+      
+      if (currentStreak > 0) {
+        this.streakText.setColor(THEME.STREAK);
+        
+        if (currentStreak > 2 && !this.scene.tweens.isTweening(this.streakText)) {
+          this.scene.tweens.add({
+            targets: this.streakText,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 300,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+          });
+        }
+      } else {
+        this.streakText.setColor(THEME.TEXT_LABEL);
+        this.scene.tweens.killTweensOf(this.streakText);
+        this.streakText.setScale(1);
+      }
+    }
+  }
+
   private updatePowerUpIndicators(gameStats: any) {
     const powerUps = [
-      { active: gameStats.hasShield, color: 0x4ecdc4, emoji: '🛡️' },
-      { active: gameStats.isInvincible, color: 0xffd93d, emoji: '⭐' },
+      { active: gameStats.hasShield, color: THEME.HIGHLIGHT, emoji: '🛡️' },
+      { active: gameStats.isInvincible, color: 0x6B7280, emoji: '⭐' },
       { active: gameStats.multiplier > 1, color: THEME.HIGHLIGHT, emoji: '💎' },
-      { active: false, color: 0xff6b6b, emoji: '🚀' },
-      { active: false, color: 0xff69b4, emoji: '❤️' }
+      { active: false, color: 0xF59E0B, emoji: '🚀' },
+      { active: false, color: THEME.HIGHLIGHT, emoji: '❤️' }
     ];
     
     powerUps.forEach((powerUp, index) => {
@@ -345,33 +420,62 @@ export default class UISystem {
   }
 
   showFloatingText(text: string, x: number, y: number, color: string = '#ffffff', fontSize: string = '16px') {
+    // Enhanced floating text with premium styling
     const floatingText = this.scene.add.text(x, y, text, {
       fontSize,
       color,
-      fontFamily: 'Arial',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 2
+      strokeThickness: 3,
+      shadow: {
+        offsetX: 2,
+        offsetY: 2,
+        color: '#000000',
+        blur: 4,
+        stroke: true,
+        fill: true
+      }
     }).setOrigin(0.5);
     
     floatingText.setDepth(1003);
+    floatingText.setAlpha(0);
     
     const floatingTextData: FloatingText = {
       text: floatingText,
-      timer: 2000,
-      maxTimer: 2000
+      timer: 2500,
+      maxTimer: 2500
     };
     
     this.floatingTexts.push(floatingTextData);
     
+    // Enhanced animation with bounce effect
     this.scene.tweens.add({
       targets: floatingText,
-      y: y - 50,
+      alpha: 1,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 200,
+      ease: 'Back.easeOut'
+    });
+
+    this.scene.tweens.add({
+      targets: floatingText,
+      y: y - 60,
       alpha: 0,
-      scaleX: 1.5,
-      scaleY: 1.5,
+      scaleX: 0.8,
+      scaleY: 0.8,
       duration: 2000,
+      delay: 300,
       ease: 'Power2.easeOut'
+    });
+    
+    // Add subtle floating motion
+    this.scene.tweens.add({
+      targets: floatingText,
+      x: x + Phaser.Math.Between(-10, 10),
+      duration: 2500,
+      ease: 'Sine.easeInOut'
     });
   }
 

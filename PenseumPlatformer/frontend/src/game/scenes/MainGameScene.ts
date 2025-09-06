@@ -31,6 +31,7 @@ export default class MainGameScene extends Phaser.Scene {
   private gameData!: SceneData;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: any;
+  private previousWKeyState: boolean = false;
 
   private gameStats = {
     score: 0,
@@ -41,7 +42,14 @@ export default class MainGameScene extends Phaser.Scene {
     powerUpsUsed: 0,
     multiplier: 1,
     isInvincible: false,
-    invincibilityTimer: 0
+    invincibilityTimer: 0,
+    enemiesKilled: 0,
+    timeBonus: 0,
+    accuracyBonus: 0,
+    streakBonus: 0,
+    currentStreak: 0,
+    maxStreak: 0,
+    startTime: 0
   };
 
   constructor() {
@@ -94,12 +102,9 @@ export default class MainGameScene extends Phaser.Scene {
     
     // Setup collisions AFTER platforms are created
     this.setupCollisions();
-
-    // Log current jump physics configuration for debugging
-    console.log('=== GAME PHYSICS CONFIGURATION ===');
-    console.log('Jump Physics:', GameConfig.getJumpPhysicsInfo());
-    console.log('To adjust difficulty, modify values in GameConfig.ts');
-    console.log('=====================================');
+    
+    // Record start time for time bonus calculation
+    this.gameStats.startTime = this.time.now;
 
     this.events.on('answer-selected', this.handleAnswerSelected, this);
     this.events.on('power-up-collected', this.handlePowerUpCollected, this);
@@ -149,36 +154,28 @@ export default class MainGameScene extends Phaser.Scene {
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
 
-    // Clean white background
-    const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0xFFFFFF);
+    const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x2D1B69);
     bg.setOrigin(0, 0);
 
-    // Modern loading text with Penseum styling
-    const loadingText = this.add.text(centerX, centerY - 20, 'Loading Questions...', {
-      fontSize: '32px',
-      color: '#000000',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-      fontStyle: 'bold'
+    const loadingText = this.add.text(centerX, centerY, 'Loading Questions...', {
+      fontSize: '24px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    // Stylish progress bar container
-    const progressBar = this.add.rectangle(centerX, centerY + 40, 300, 8, 0xE5E7EB);
-    progressBar.setStrokeStyle(1, 0xD1D5DB, 1);
-    
-    // Purple progress fill
-    const progressFill = this.add.rectangle(centerX - 150, centerY + 40, 0, 6, 0x7C3AED);
+    const progressBar = this.add.rectangle(centerX, centerY + 50, 200, 20, 0x333333);
+    const progressFill = this.add.rectangle(centerX - 100, centerY + 50, 0, 16, 0x6F47EB);
     progressFill.setOrigin(0, 0.5);
 
     let progress = 0;
-    this.time.addEvent({
+    const progressTimer = this.time.addEvent({
       delay: 50,
       repeat: 20,
       callback: () => {
-        progress += 15;
-        progressFill.width = Math.min(300, progress);
-        if (progress >= 300) {
-          loadingText.setText('Ready to Learn!');
-          loadingText.setStyle({ color: '#7C3AED' }); // Change to purple when ready
+        progress += 10;
+        progressFill.width = Math.min(200, progress);
+        if (progress >= 200) {
+          loadingText.setText('Ready!');
           this.time.delayedCall(500, () => {
             loadingText.destroy();
             progressBar.destroy();
@@ -191,421 +188,228 @@ export default class MainGameScene extends Phaser.Scene {
   }
 
   private createPlayerSprites() {
-    // Modern, minimal player design with Penseum colors and gradients
+    // Simple purple player using rgb(111, 71, 235)
     const playerGraphics = this.add.graphics();
-    
-    // Create gradient background
-    playerGraphics.fillGradientStyle(0x7C3AED, 0x5B21B6, 0x9333EA, 0x6D28D9);
-    playerGraphics.fillRoundedRect(0, 0, 32, 32, 12); // Medium rounded corners
-    
-    // Add subtle highlight for depth
-    playerGraphics.fillStyle(0xffffff, 0.4);
-    playerGraphics.fillRoundedRect(4, 4, 24, 6, 3); // Larger white highlight
-    
-    // Add shadow underneath
-    playerGraphics.fillStyle(0x000000, 0.2);
-    playerGraphics.fillRoundedRect(2, 28, 28, 6, 3); // Shadow
-    
-    // Add border for definition
-    playerGraphics.lineStyle(2, 0x4C1D95, 1);
-    playerGraphics.strokeRoundedRect(1, 1, 30, 30, 12);
-    
-    playerGraphics.generateTexture('player', 32, 36);
+    playerGraphics.fillStyle(0x6F47EB);
+    playerGraphics.fillRoundedRect(0, 0, 32, 32, 8);
+    playerGraphics.lineStyle(2, 0xFFFFFF, 1);
+    playerGraphics.strokeRoundedRect(0, 0, 32, 32, 8);
+    playerGraphics.generateTexture('player', 32, 32);
     playerGraphics.destroy();
 
-    // Player with shield - enhanced design
+    // Player with shield - simple design with white shield
     const playerShieldGraphics = this.add.graphics();
-    
-    // Player body with gradient
-    playerShieldGraphics.fillGradientStyle(0x7C3AED, 0x5B21B6, 0x9333EA, 0x6D28D9);
-    playerShieldGraphics.fillRoundedRect(6, 6, 32, 32, 12);
-    
-    // Shield glow effect
-    playerShieldGraphics.fillStyle(0x60A5FA, 0.3);
-    playerShieldGraphics.fillCircle(22, 22, 24);
-    
-    // Shield outline with gradient effect
-    playerShieldGraphics.lineStyle(4, 0x3B82F6, 1);
-    playerShieldGraphics.strokeCircle(22, 22, 20);
-    playerShieldGraphics.lineStyle(2, 0x60A5FA, 1);
-    playerShieldGraphics.strokeCircle(22, 22, 18);
-    
-    // Player highlight
-    playerShieldGraphics.fillStyle(0xffffff, 0.4);
-    playerShieldGraphics.fillRoundedRect(10, 10, 24, 6, 3);
-    
+    playerShieldGraphics.fillStyle(0x6F47EB);
+    playerShieldGraphics.fillRoundedRect(0, 0, 32, 32, 8);
+    playerShieldGraphics.lineStyle(4, 0xFFFFFF, 1);
+    playerShieldGraphics.strokeCircle(16, 16, 20);
     playerShieldGraphics.generateTexture('player-shield', 44, 44);
     playerShieldGraphics.destroy();
   }
 
   private createPlatformSprites() {
     const platformConfigs = {
-      correct: { base: 0x7C3AED, dark: 0x5B21B6, light: 0x9333EA, accent: 0x6D28D9 },
-      incorrect: { base: 0x374151, dark: 0x1F2937, light: 0x4B5563, accent: 0x6B7280 },
-      neutral: { base: 0x6B7280, dark: 0x4B5563, light: 0x9CA3AF, accent: 0xD1D5DB },
-      breaking: { base: 0xEF4444, dark: 0xDC2626, light: 0xF87171, accent: 0x991B1B },
-      trampoline: { base: 0x10B981, dark: 0x047857, light: 0x34D399, accent: 0x059669 },
-      cracked: { base: 0x9CA3AF, dark: 0x6B7280, light: 0xD1D5DB, accent: 0x4B5563 }
+      correct: { base: 0x6F47EB, border: 0xFFFFFF },
+      incorrect: { base: 0xFFFFFF, border: 0x6F47EB },
+      neutral: { base: 0xFFFFFF, border: 0x6F47EB },
+      breaking: { base: 0xFFFFFF, border: 0x6F47EB },
+      trampoline: { base: 0x6F47EB, border: 0xFFFFFF },
+      cracked: { base: 0xFFFFFF, border: 0x6F47EB }
     };
 
     Object.entries(platformConfigs).forEach(([type, colors]) => {
       const graphics = this.add.graphics();
       
-      // Create shadow first (drawn behind)
-      graphics.fillStyle(0x000000, 0.2);
-      graphics.fillRoundedRect(2, 4, 150, 40, 12);
+      // Simple filled rectangle
+      graphics.fillStyle(colors.base);
+      graphics.fillRoundedRect(0, 0, 150, 40, 8);
       
-      // Create gradient background
-      graphics.fillGradientStyle(colors.base, colors.dark, colors.light, colors.accent);
-      graphics.fillRoundedRect(0, 0, 150, 40, 12);
+      // Simple border
+      graphics.lineStyle(2, colors.border, 1);
+      graphics.strokeRoundedRect(0, 0, 150, 40, 8);
       
-      // Add subtle inner shadow for depth
-      graphics.fillStyle(colors.dark, 0.3);
-      graphics.fillRoundedRect(2, 2, 146, 4, 6);
-      
-      // Add highlight on top
-      graphics.fillStyle(0xffffff, 0.2);
-      graphics.fillRoundedRect(4, 4, 142, 8, 6);
-      
-      // Add special effects for different platform types
-      if (type === 'breaking') {
-        // Add crack pattern for breaking platforms
-        graphics.lineStyle(2, colors.accent, 1);
-        graphics.strokeRoundedRect(1, 1, 148, 38, 12);
-        
-        // Draw realistic crack lines
-        graphics.lineStyle(2, colors.accent, 0.8);
-        graphics.moveTo(30, 8);
-        graphics.lineTo(45, 32);
-        graphics.lineTo(55, 15);
-        graphics.moveTo(80, 12);
-        graphics.lineTo(70, 28);
-        graphics.lineTo(85, 35);
-        graphics.moveTo(100, 6);
-        graphics.lineTo(115, 25);
-        graphics.lineTo(125, 18);
-        graphics.strokePath();
-        
-      } else if (type === 'trampoline') {
-        // Add bounce indicator for trampolines
-        graphics.lineStyle(3, colors.accent, 1);
-        graphics.strokeRoundedRect(1, 1, 148, 38, 12);
-        
-        // Draw enhanced spring coils with 3D effect
-        for (let i = 25; i < 125; i += 25) {
-          graphics.lineStyle(3, colors.accent, 0.8);
-          graphics.strokeCircle(i, 20, 6);
-          graphics.lineStyle(2, colors.light, 0.6);
-          graphics.strokeCircle(i, 18, 4);
-        }
-        
-        // Add bounce indicators
-        graphics.fillStyle(colors.light, 0.6);
-        graphics.fillTriangle(75, 8, 70, 15, 80, 15);
-        
-      } else if (type === 'correct') {
-        // Add subtle glow effect for correct platforms
-        graphics.lineStyle(3, colors.light, 0.6);
-        graphics.strokeRoundedRect(0, 0, 150, 40, 12);
-        
-      } else {
-        // Standard enhanced border
-        graphics.lineStyle(2, colors.accent, 1);
-        graphics.strokeRoundedRect(1, 1, 148, 38, 12);
-      }
-
-      graphics.generateTexture(`platform-${type}`, 150, 44);
+      graphics.generateTexture(`platform-${type}`, 150, 40);
       graphics.destroy();
     });
   }
 
   private createPowerUpSprites() {
     const powerUps = [
-      { key: 'shield', color: 0x7C3AED }, // Penseum purple
-      { key: 'boost', color: 0x000000 }, // Black  
-      { key: 'invincibility', color: 0x4B5563 }, // Gray
-      { key: 'multiplier', color: 0x7C3AED }, // Purple
-      { key: 'life', color: 0x000000 }, // Black
-      { key: 'jetpack', color: 0xF59E0B }, // Orange for jetpack
-      { key: 'trampoline', color: 0x10B981 }, // Green for trampoline
-      { key: 'doubleJump', color: 0x8B5CF6 } // Light purple for double jump
+      { key: 'shield', color: 0x6F47EB },
+      { key: 'boost', color: 0x6F47EB },
+      { key: 'invincibility', color: 0xFFFFFF },
+      { key: 'multiplier', color: 0x6F47EB },
+      { key: 'life', color: 0x6F47EB },
+      { key: 'jetpack', color: 0xFFFFFF },
+      { key: 'trampoline', color: 0x6F47EB },
+      { key: 'doubleJump', color: 0xFFFFFF }
     ];
 
     powerUps.forEach(({ key, color }) => {
       const graphics = this.add.graphics();
-      
-      if (key === 'jetpack') {
-        // Special jetpack design
-        graphics.fillStyle(color);
-        graphics.fillRoundedRect(6, 4, 20, 24, 6);
-        
-        // Jetpack flames
-        graphics.fillStyle(0xFF6B35);
-        graphics.fillTriangle(8, 28, 12, 32, 16, 28);
-        graphics.fillTriangle(16, 28, 20, 32, 24, 28);
-        
-        // Border
-        graphics.lineStyle(2, 0xffffff, 1);
-        graphics.strokeRoundedRect(6, 4, 20, 24, 6);
-        
-      } else if (key === 'trampoline') {
-        // Special trampoline design
-        graphics.fillStyle(color);
-        graphics.fillRoundedRect(4, 4, 24, 24, 8);
-        
-        // Spring coil in center
-        graphics.lineStyle(2, 0xffffff, 1);
-        graphics.strokeCircle(16, 16, 6);
-        graphics.strokeCircle(16, 16, 3);
-        
-        // Border
-        graphics.strokeRoundedRect(4, 4, 24, 24, 8);
-        
-      } else {
-        // Standard power-up design
-        graphics.fillStyle(color);
-        graphics.fillRoundedRect(4, 4, 24, 24, 8);
-        
-        // Clean white border
-        graphics.lineStyle(2, 0xffffff, 1);
-        graphics.strokeRoundedRect(4, 4, 24, 24, 8);
-      }
-      
+      graphics.fillStyle(color);
+      graphics.fillRoundedRect(4, 4, 24, 24, 8);
+      graphics.lineStyle(2, color === 0xFFFFFF ? 0x6F47EB : 0xFFFFFF, 1);
+      graphics.strokeRoundedRect(4, 4, 24, 24, 8);
       graphics.generateTexture(`powerup-${key}`, 32, 32);
       graphics.destroy();
     });
   }
 
   private createUISprites() {
-    // Modern heart design in Penseum colors
+    // Simple purple heart using rgb(111, 71, 235)
     const heartGraphics = this.add.graphics();
-    heartGraphics.fillStyle(0x7C3AED); // Purple heart
+    heartGraphics.fillStyle(0x6F47EB);
     heartGraphics.fillCircle(10, 12, 6);
     heartGraphics.fillCircle(18, 12, 6);
     heartGraphics.fillTriangle(14, 18, 6, 25, 22, 25);
-    
-    // White outline for contrast on white background
-    heartGraphics.lineStyle(2, 0x000000, 0.5);
+    heartGraphics.lineStyle(2, 0xFFFFFF, 1);
     heartGraphics.strokeCircle(10, 12, 6);
     heartGraphics.strokeCircle(18, 12, 6);
-    
     heartGraphics.generateTexture('heart', 28, 28);
     heartGraphics.destroy();
   }
 
   private createEnemySprites() {
-    // Shooter enemy - red triangle
+    // Simple shooter enemy - white triangle with purple border
     const shooterGraphics = this.add.graphics();
-    shooterGraphics.fillStyle(0xff0000);
+    shooterGraphics.fillStyle(0xFFFFFF);
     shooterGraphics.fillTriangle(16, 4, 4, 28, 28, 28);
-    shooterGraphics.lineStyle(2, 0x000000, 1);
+    shooterGraphics.lineStyle(2, 0x6F47EB, 1);
     shooterGraphics.strokeTriangle(16, 4, 4, 28, 28, 28);
     shooterGraphics.generateTexture('enemy-shooter', 32, 32);
     shooterGraphics.destroy();
 
-    // Melee enemy - dark red square
+    // Simple melee enemy - purple square with white border
     const meleeGraphics = this.add.graphics();
-    meleeGraphics.fillStyle(0x8B0000);
+    meleeGraphics.fillStyle(0x6F47EB);
     meleeGraphics.fillRoundedRect(4, 4, 24, 24, 4);
-    meleeGraphics.lineStyle(2, 0x000000, 1);
+    meleeGraphics.lineStyle(2, 0xFFFFFF, 1);
     meleeGraphics.strokeRoundedRect(4, 4, 24, 24, 4);
     meleeGraphics.generateTexture('enemy-melee', 32, 32);
     meleeGraphics.destroy();
 
-    // Bomber enemy - dark red circle
+    // Simple bomber enemy - white circle with purple border
     const bomberGraphics = this.add.graphics();
-    bomberGraphics.fillStyle(0x4B0000);
+    bomberGraphics.fillStyle(0xFFFFFF);
     bomberGraphics.fillCircle(16, 16, 12);
-    bomberGraphics.lineStyle(2, 0x000000, 1);
+    bomberGraphics.lineStyle(2, 0x6F47EB, 1);
     bomberGraphics.strokeCircle(16, 16, 12);
     bomberGraphics.generateTexture('enemy-bomber', 32, 32);
     bomberGraphics.destroy();
 
-    // Walker enemy - green square
+    // Simple walker enemy - purple square with white border
     const walkerGraphics = this.add.graphics();
-    walkerGraphics.fillStyle(0x006400);
+    walkerGraphics.fillStyle(0x6F47EB);
     walkerGraphics.fillRoundedRect(4, 4, 24, 24, 4);
-    walkerGraphics.lineStyle(2, 0x000000, 1);
+    walkerGraphics.lineStyle(2, 0xFFFFFF, 1);
     walkerGraphics.strokeRoundedRect(4, 4, 24, 24, 4);
     walkerGraphics.generateTexture('enemy-walker', 32, 32);
     walkerGraphics.destroy();
 
-    // Generic enemy sprite (fallback)
+    // Simple generic enemy sprite - white with purple border
     const enemyGraphics = this.add.graphics();
-    enemyGraphics.fillStyle(0xff0000);
+    enemyGraphics.fillStyle(0xFFFFFF);
     enemyGraphics.fillRoundedRect(4, 4, 24, 24, 6);
-    enemyGraphics.lineStyle(2, 0x000000, 1);
+    enemyGraphics.lineStyle(2, 0x6F47EB, 1);
     enemyGraphics.strokeRoundedRect(4, 4, 24, 24, 6);
     enemyGraphics.generateTexture('enemy', 32, 32);
     enemyGraphics.destroy();
   }
 
   private createProjectileSprites() {
-    // Enemy projectile - red circle with glow
+    // Simple enemy projectile - white circle with purple border
     const enemyProjectileGraphics = this.add.graphics();
-    enemyProjectileGraphics.fillGradientStyle(0xff0000, 0xaa0000, 0xff4444, 0x660000);
+    enemyProjectileGraphics.fillStyle(0xFFFFFF);
     enemyProjectileGraphics.fillCircle(4, 4, 4);
-    enemyProjectileGraphics.lineStyle(1, 0x000000, 1);
+    enemyProjectileGraphics.lineStyle(1, 0x6F47EB, 1);
     enemyProjectileGraphics.strokeCircle(4, 4, 4);
     enemyProjectileGraphics.generateTexture('projectile-enemy', 8, 8);
     enemyProjectileGraphics.destroy();
 
-    // Player projectile - blue circle with glow
+    // Simple player projectile - purple circle with white border
     const playerProjectileGraphics = this.add.graphics();
-    playerProjectileGraphics.fillGradientStyle(0x0000ff, 0x0000aa, 0x4444ff, 0x000066);
+    playerProjectileGraphics.fillStyle(0x6F47EB);
     playerProjectileGraphics.fillCircle(4, 4, 4);
-    playerProjectileGraphics.lineStyle(1, 0x000000, 1);
+    playerProjectileGraphics.lineStyle(1, 0xFFFFFF, 1);
     playerProjectileGraphics.strokeCircle(4, 4, 4);
     playerProjectileGraphics.generateTexture('projectile-player', 8, 8);
     playerProjectileGraphics.destroy();
 
-    // Generic projectile sprite (fallback)
+    // Simple generic projectile sprite - white with purple border
     const projectileGraphics = this.add.graphics();
-    projectileGraphics.fillGradientStyle(0xff0000, 0xaa0000, 0xff4444, 0x660000);
+    projectileGraphics.fillStyle(0xFFFFFF);
     projectileGraphics.fillCircle(4, 4, 4);
-    projectileGraphics.lineStyle(1, 0x000000, 1);
+    projectileGraphics.lineStyle(1, 0x6F47EB, 1);
     projectileGraphics.strokeCircle(4, 4, 4);
     projectileGraphics.generateTexture('projectile', 8, 8);
     projectileGraphics.destroy();
   }
 
   private createFallingObjectSprites() {
-    // Rock - brown with cracks
+    // Simple rock - white with purple border
     const rockGraphics = this.add.graphics();
-    rockGraphics.fillGradientStyle(0x8B4513, 0x5D2F0A, 0xA0522D, 0x654321);
+    rockGraphics.fillStyle(0xFFFFFF);
     rockGraphics.fillRoundedRect(0, 0, 24, 24, 6);
-    
-    // Add crack details
-    rockGraphics.lineStyle(1, 0x3E2723, 0.8);
-    rockGraphics.moveTo(6, 4);
-    rockGraphics.lineTo(12, 16);
-    rockGraphics.moveTo(16, 8);
-    rockGraphics.lineTo(20, 18);
-    rockGraphics.strokePath();
-    
-    // Shadow
-    rockGraphics.fillStyle(0x000000, 0.2);
-    rockGraphics.fillEllipse(12, 26, 20, 6);
-    
-    rockGraphics.generateTexture('falling-rock', 24, 28);
+    rockGraphics.lineStyle(2, 0x6F47EB, 1);
+    rockGraphics.strokeRoundedRect(0, 0, 24, 24, 6);
+    rockGraphics.generateTexture('falling-rock', 24, 24);
     rockGraphics.destroy();
 
-    // Spike - metallic silver with sharp edges
+    // Simple spike - purple with white border
     const spikeGraphics = this.add.graphics();
-    spikeGraphics.fillGradientStyle(0xC0C0C0, 0x808080, 0xE0E0E0, 0x606060);
+    spikeGraphics.fillStyle(0x6F47EB);
     spikeGraphics.fillTriangle(12, 0, 0, 24, 24, 24);
-    
-    // Metallic shine
-    spikeGraphics.fillStyle(0xFFFFFF, 0.4);
-    spikeGraphics.fillTriangle(12, 2, 8, 12, 16, 12);
-    
-    // Sharp edge highlight
-    spikeGraphics.lineStyle(1, 0xFFFFFF, 0.6);
-    spikeGraphics.moveTo(12, 0);
-    spikeGraphics.lineTo(0, 24);
-    spikeGraphics.strokePath();
-    
+    spikeGraphics.lineStyle(2, 0xFFFFFF, 1);
+    spikeGraphics.strokeTriangle(12, 0, 0, 24, 24, 24);
     spikeGraphics.generateTexture('falling-spike', 24, 24);
     spikeGraphics.destroy();
 
-    // Bomb - black with red fuse
+    // Simple bomb - white with purple border
     const bombGraphics = this.add.graphics();
-    bombGraphics.fillGradientStyle(0x2C2C2C, 0x000000, 0x4A4A4A, 0x1A1A1A);
+    bombGraphics.fillStyle(0xFFFFFF);
     bombGraphics.fillCircle(12, 12, 10);
-    
-    // Fuse
-    bombGraphics.lineStyle(2, 0x8B4513, 1);
-    bombGraphics.moveTo(12, 2);
-    bombGraphics.lineTo(10, 0);
-    bombGraphics.strokePath();
-    
-    // Spark at end of fuse
-    bombGraphics.fillStyle(0xFF4500, 1);
-    bombGraphics.fillCircle(10, 0, 2);
-    
-    // Shine on bomb
-    bombGraphics.fillStyle(0xFFFFFF, 0.2);
-    bombGraphics.fillCircle(8, 8, 3);
-    
+    bombGraphics.lineStyle(2, 0x6F47EB, 1);
+    bombGraphics.strokeCircle(12, 12, 10);
     bombGraphics.generateTexture('falling-bomb', 24, 24);
     bombGraphics.destroy();
 
-    // Ice - translucent blue with sparkles
+    // Simple ice - purple with white border
     const iceGraphics = this.add.graphics();
-    iceGraphics.fillGradientStyle(0x87CEEB, 0x4682B4, 0xADD8E6, 0x5F9EA0);
+    iceGraphics.fillStyle(0x6F47EB);
     iceGraphics.fillRoundedRect(2, 2, 20, 20, 4);
-    
-    // Ice crystals
-    iceGraphics.lineStyle(1, 0xFFFFFF, 0.8);
-    iceGraphics.strokeRoundedRect(4, 4, 16, 16, 3);
-    
-    // Internal sparkles
-    iceGraphics.fillStyle(0xFFFFFF, 0.6);
-    iceGraphics.fillCircle(8, 8, 1);
-    iceGraphics.fillCircle(16, 16, 1);
-    iceGraphics.fillCircle(14, 10, 1);
-    
+    iceGraphics.lineStyle(2, 0xFFFFFF, 1);
+    iceGraphics.strokeRoundedRect(2, 2, 20, 20, 4);
     iceGraphics.generateTexture('falling-ice', 24, 24);
     iceGraphics.destroy();
 
-    // Acid - green with bubbles
+    // Simple acid - white with purple border
     const acidGraphics = this.add.graphics();
-    acidGraphics.fillGradientStyle(0x32CD32, 0x228B22, 0x7FFF00, 0x006400);
+    acidGraphics.fillStyle(0xFFFFFF);
     acidGraphics.fillCircle(12, 12, 10);
-    
-    // Bubbles
-    acidGraphics.fillStyle(0x7FFF00, 0.4);
-    acidGraphics.fillCircle(8, 8, 2);
-    acidGraphics.fillCircle(16, 10, 3);
-    acidGraphics.fillCircle(10, 16, 2);
-    
-    // Toxic glow
-    acidGraphics.lineStyle(2, 0x7FFF00, 0.3);
-    acidGraphics.strokeCircle(12, 12, 12);
-    
+    acidGraphics.lineStyle(2, 0x6F47EB, 1);
+    acidGraphics.strokeCircle(12, 12, 10);
     acidGraphics.generateTexture('falling-acid', 24, 24);
     acidGraphics.destroy();
   }
 
   private createBackground() {
-    // Clean white background
-    const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0xFFFFFF);
+    const bg = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x2D1B69);
     bg.setOrigin(0, 0);
 
-    // Add subtle grid pattern for depth (minimal design)
-    const gridSize = 60;
-    const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0xE5E7EB, 0.3);
-    
-    // Vertical lines
-    for (let x = 0; x < this.cameras.main.width; x += gridSize) {
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, this.cameras.main.height);
-    }
-    
-    // Horizontal lines
-    for (let y = 0; y < this.cameras.main.height; y += gridSize) {
-      graphics.moveTo(0, y);
-      graphics.lineTo(this.cameras.main.width, y);
-    }
-    
-    graphics.strokePath();
-    graphics.setAlpha(0.2);
-    
-    // Add some minimal floating accent elements
-    for (let i = 0; i < 8; i++) {
-      const accent = this.add.circle(
+    for (let i = 0; i < 50; i++) {
+      const star = this.add.circle(
         Phaser.Math.Between(0, this.cameras.main.width),
         Phaser.Math.Between(0, this.cameras.main.height),
-        Phaser.Math.Between(2, 4),
-        0x7C3AED,
-        0.1
+        Phaser.Math.Between(1, 3),
+        0xffffff,
+        Phaser.Math.FloatBetween(0.3, 0.8)
       );
 
       this.tweens.add({
-        targets: accent,
-        alpha: 0.2,
-        duration: Phaser.Math.Between(3000, 5000),
+        targets: star,
+        alpha: Phaser.Math.FloatBetween(0.2, 1),
+        duration: Phaser.Math.Between(1000, 3000),
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
@@ -639,20 +443,14 @@ export default class MainGameScene extends Phaser.Scene {
     // Always create initial platforms for gameplay
     this.platformSystem.createInitialPlatforms();
     
-    console.log('Questions loaded:', this.questions.length);
-    console.log('First question:', this.questions[0]);
-    
     // Create question platforms if questions are available
     if (this.questions.length > 0) {
-      console.log('Setting up first question immediately...');
-      // Show question immediately when game starts
-      const currentQuestion = this.questions[this.currentQuestionIndex];
-      console.log('Showing question:', currentQuestion.question);
-      this.uiSystem.showQuestion(currentQuestion);
-      this.platformSystem.createPlatformsForQuestion(currentQuestion);
+      // Delay question platforms to let player get familiar with controls
+      this.time.delayedCall(3000, () => {
+        this.platformSystem.createPlatformsForQuestion(this.questions[this.currentQuestionIndex]);
+      });
       this.spawnRandomPowerUp();
     } else {
-      console.log('No questions available, using procedural platforms only');
       // If no questions, just create more procedural platforms
       this.time.addEvent({
         delay: 5000,
@@ -673,56 +471,37 @@ export default class MainGameScene extends Phaser.Scene {
 
     const body = player.body as Phaser.Physics.Arcade.Body;
 
-    // Horizontal movement
+    // Handle horizontal movement
     if (this.cursors.left.isDown || this.keys.A.isDown) {
-      body.setVelocityX(-GameConfig.PLAYER_HORIZONTAL_SPEED);
+      body.setVelocityX(-200);
       player.setFlipX(true);
     } else if (this.cursors.right.isDown || this.keys.D.isDown) {
-      body.setVelocityX(GameConfig.PLAYER_HORIZONTAL_SPEED);
+      body.setVelocityX(200);
       player.setFlipX(false);
     } else {
       body.setVelocityX(0);
     }
 
-    // Jumping mechanics
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) {
-      if (this.player.jump()) {
-        console.log('Jump sound effect');
-        this.particleSystem.createJumpParticles(player.x, player.y + 16);
-        
-        // Check for enemy jump-on
-        this.checkEnemyJumpOn(player);
-      }
-    }
-
-    // Jetpack controls (hold to fly)
-    if (this.cursors.up.isDown || this.keys.SPACE.isDown) {
-      if (this.player.useJetpack(16)) { // Assuming 60fps, so ~16ms per frame
-        // Create jetpack particle effects
-        this.particleSystem.createJumpParticles(player.x, player.y + 20);
-      }
-    }
-  }
-
-  private checkEnemyJumpOn(player: Phaser.Physics.Arcade.Sprite) {
-    const enemies = this.enemySystem.getEnemies();
-    const playerBody = player.body as Phaser.Physics.Arcade.Body;
+    // Handle super jump charging with W key
+    const currentWKeyState = this.keys.W.isDown;
     
-    enemies.forEach(enemy => {
-      const enemySprite = enemy.getSprite();
-      const enemyBody = enemySprite.body as Phaser.Physics.Arcade.Body;
-      
-      // Check if player is above enemy and falling down
-      if (player.y < enemySprite.y - 10 && 
-          playerBody.velocity.y > 0 && // Player is falling
-          Math.abs(player.x - enemySprite.x) < 30) { // Within horizontal range
-        
-        // Check if player is directly above enemy
-        if (player.x >= enemySprite.x - 15 && player.x <= enemySprite.x + 15) {
-          enemy.handleJumpedOn();
-        }
+    if (currentWKeyState && !this.previousWKeyState) {
+      // W key just pressed - start charging super jump
+      this.player.startSuperJumpCharge();
+    } else if (!currentWKeyState && this.previousWKeyState) {
+      // W key just released - release super jump
+      const jumped = this.player.releaseSuperJump();
+      if (jumped) {
+        this.particleSystem.createJumpParticles(player.x, player.y + 16);
       }
-    });
+    } else if (!currentWKeyState && (this.cursors.up.isDown || this.keys.SPACE.isDown) && body.touching.down) {
+      // Normal jump with UP arrow or SPACE (only when W is not held)
+      body.setVelocityY(-500);
+      this.particleSystem.createJumpParticles(player.x, player.y + 16);
+    }
+    
+    // Update previous state for next frame
+    this.previousWKeyState = currentWKeyState;
   }
 
   private updateGameLogic(time: number, delta: number) {
@@ -810,16 +589,6 @@ export default class MainGameScene extends Phaser.Scene {
     this.particleSystem.createFailureParticles(platform.x + platform.width / 2, platform.y);
   }
 
-  private loseLife() {
-    this.gameStats.lives--;
-    this.cameras.main.flash(300, 255, 0, 0, false);
-
-    if (this.gameStats.lives <= 0) {
-      this.gameOver();
-    } else {
-      this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
-    }
-  }
 
   private handlePowerUpCollected(powerUp: PowerUp) {
     this.gameStats.powerUpsUsed++;
@@ -828,113 +597,34 @@ export default class MainGameScene extends Phaser.Scene {
       case 'shield':
         this.gameStats.hasShield = true;
         this.player.addShield();
-        this.uiSystem.showFloatingText('SHIELD ACTIVATED!', powerUp.x, powerUp.y, '#7C3AED');
+        this.uiSystem.showFloatingText('SHIELD ACTIVATED!', powerUp.x, powerUp.y, '#4ecdc4');
         break;
 
       case 'doubleBoost':
         this.player.setDoubleBoost(5000);
-        this.uiSystem.showFloatingText('DOUBLE BOOST!', powerUp.x, powerUp.y, '#000000');
+        this.uiSystem.showFloatingText('DOUBLE BOOST!', powerUp.x, powerUp.y, '#ff6b6b');
         break;
 
       case 'invincibility':
         this.gameStats.isInvincible = true;
         this.gameStats.invincibilityTimer = 10000;
         this.player.addInvincibility();
-        this.uiSystem.showFloatingText('INVINCIBLE!', powerUp.x, powerUp.y, '#4B5563');
+        this.uiSystem.showFloatingText('INVINCIBLE!', powerUp.x, powerUp.y, '#ffd93d');
         break;
 
       case 'scoreMultiplier':
         this.gameStats.multiplier = 2;
         this.gameStats.invincibilityTimer = 15000;
-        this.uiSystem.showFloatingText('2X SCORE!', powerUp.x, powerUp.y, '#7C3AED');
+        this.uiSystem.showFloatingText('2X SCORE!', powerUp.x, powerUp.y, '#6bcf7f');
         break;
 
       case 'extraLife':
         this.gameStats.lives = Math.min(this.gameStats.lives + 1, 5);
-        this.uiSystem.showFloatingText('EXTRA LIFE!', powerUp.x, powerUp.y, '#000000');
-        break;
-
-      case 'jetpack':
-        this.player.addJetpack();
-        this.uiSystem.showFloatingText('JETPACK FUEL!', powerUp.x, powerUp.y, '#F59E0B');
-        break;
-
-      case 'doubleJump':
-        this.player.addDoubleJump();
-        this.uiSystem.showFloatingText('DOUBLE JUMP!', powerUp.x, powerUp.y, '#8B5CF6');
-        break;
-
-      case 'trampoline':
-        // This creates a temporary trampoline platform
-        this.createTrampolinePlatform(powerUp.x, powerUp.y - 40);
-        this.uiSystem.showFloatingText('TRAMPOLINE PLACED!', powerUp.x, powerUp.y, '#10B981');
+        this.uiSystem.showFloatingText('EXTRA LIFE!', powerUp.x, powerUp.y, '#ff69b4');
         break;
     }
 
     this.particleSystem.createPowerUpParticles(powerUp.x, powerUp.y, powerUp.type);
-  }
-
-  private handleQuestionAnswered(data: { answer: string; isCorrect: boolean; question: any }) {
-    this.gameStats.questionsAnswered++;
-    
-    if (data.isCorrect) {
-      this.gameStats.correctAnswers++;
-      this.handleCorrectUIAnswer(data);
-    } else {
-      this.handleIncorrectUIAnswer(data);
-    }
-    
-    // Clear the question from UI
-    this.uiSystem.clearQuestion();
-    
-    // Move to next question after a delay
-    this.moveToNextQuestion();
-  }
-
-  private handleCorrectUIAnswer(data: { answer: string; isCorrect: boolean; question: any }) {
-    const basePoints = data.question.points || 100;
-    const points = Math.floor(basePoints * this.gameStats.multiplier);
-    
-    this.gameStats.score += points;
-    
-    // Give player a boost
-    this.player.boost();
-    
-    // Create visual effects at player position
-    const player = this.player.getSprite();
-    if (player) {
-      this.particleSystem.createSuccessParticles(player.x, player.y);
-      this.uiSystem.showFloatingText(`+${points}`, player.x, player.y - 50, '#6bcf7f');
-    }
-    
-    // Screen flash
-    this.cameras.main.flash(200, 0, 255, 0, false);
-  }
-
-  private handleIncorrectUIAnswer(data: { answer: string; isCorrect: boolean; question: any }) {
-    const player = this.player.getSprite();
-    
-    if (this.gameStats.hasShield) {
-      this.gameStats.hasShield = false;
-      this.player.removeShield();
-      if (player) {
-        this.particleSystem.createShieldBreakParticles(player.x, player.y);
-        this.uiSystem.showFloatingText('SHIELD BROKEN!', player.x, player.y - 50, '#ffd93d');
-      }
-    } else if (this.gameStats.isInvincible) {
-      if (player) {
-        this.particleSystem.createInvincibilityParticles(player.x, player.y);
-        this.uiSystem.showFloatingText('INVINCIBLE!', player.x, player.y - 50, '#ffd93d');
-      }
-    } else {
-      this.loseLife();
-    }
-    
-    // Screen shake and failure effects
-    this.cameras.main.shake(300, 0.02);
-    if (player) {
-      this.particleSystem.createFailureParticles(player.x, player.y);
-    }
   }
 
   private moveToNextQuestion() {
@@ -945,9 +635,7 @@ export default class MainGameScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(2000, () => {
-      const nextQuestion = this.questions[this.currentQuestionIndex];
-      this.uiSystem.showQuestion(nextQuestion);
-      this.platformSystem.createPlatformsForQuestion(nextQuestion);
+      this.platformSystem.createPlatformsForQuestion(this.questions[this.currentQuestionIndex]);
       this.spawnRandomPowerUp();
     });
   }
@@ -960,48 +648,205 @@ export default class MainGameScene extends Phaser.Scene {
     }
   }
 
-  private createTrampolinePlatform(x: number, y: number) {
-    const trampoline = this.physics.add.staticSprite(x, y, 'platform-trampoline');
-    trampoline.setOrigin(0, 0);
-    trampoline.setScale(1);
+  private gameOver() {
+    this.scene.pause();
     
-    // Add trampoline to platforms group for collision
-    this.platformSystem.getPlatforms().add(trampoline);
+    // Calculate final score with bonuses
+    this.calculateFinalScore();
     
-    // Set up special trampoline collision
-    this.physics.add.overlap(this.player.getSprite(), trampoline, () => {
-      this.player.trampolineBounce();
-      
-      // Remove trampoline after use (single use)
-      this.time.delayedCall(100, () => {
-        trampoline.destroy();
+    // Show game over screen with play again option
+    this.showGameOverScreen();
+  }
+  
+  private calculateFinalScore() {
+    const gameTime = this.time.now - this.gameStats.startTime;
+    const gameTimeSeconds = Math.floor(gameTime / 1000);
+    
+    // Calculate accuracy bonus
+    const accuracy = this.gameStats.questionsAnswered > 0 
+      ? this.gameStats.correctAnswers / this.gameStats.questionsAnswered 
+      : 0;
+    this.gameStats.accuracyBonus = Math.floor(accuracy * 500);
+    
+    // Calculate time bonus (faster completion = higher bonus)
+    this.gameStats.timeBonus = Math.max(0, 1000 - gameTimeSeconds);
+    
+    // Calculate streak bonus
+    this.gameStats.streakBonus = this.gameStats.maxStreak * 50;
+    
+    // Add all bonuses to final score
+    this.gameStats.score += this.gameStats.accuracyBonus + this.gameStats.timeBonus + this.gameStats.streakBonus;
+  }
+  
+  private showGameOverScreen() {
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+    
+    // Semi-transparent overlay
+    const overlay = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.7);
+    overlay.setOrigin(0, 0);
+    overlay.setDepth(2000);
+    overlay.setScrollFactor(0);
+    
+    // Game Over container
+    const gameOverContainer = this.add.container(centerX, centerY);
+    gameOverContainer.setDepth(2001);
+    gameOverContainer.setScrollFactor(0);
+    
+    // Game Over background
+    const bgPanel = this.add.rectangle(0, 0, 500, 400, 0xFFFFFF, 1);
+    bgPanel.setStrokeStyle(4, 0x6F47EB, 1);
+    
+    // Game Over title
+    const gameOverText = this.add.text(0, -150, 'GAME OVER', {
+      fontSize: '48px',
+      color: '#6F47EB',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    
+    // Score breakdown
+    const scoreTexts = [
+      `Final Score: ${this.gameStats.score.toLocaleString()}`,
+      `Questions Answered: ${this.gameStats.correctAnswers}/${this.gameStats.questionsAnswered}`,
+      `Accuracy Bonus: +${this.gameStats.accuracyBonus}`,
+      `Time Bonus: +${this.gameStats.timeBonus}`,
+      `Streak Bonus: +${this.gameStats.streakBonus}`,
+      `Enemies Defeated: ${this.gameStats.enemiesKilled}`,
+      `Power-ups Used: ${this.gameStats.powerUpsUsed}`
+    ];
+    
+    scoreTexts.forEach((text, index) => {
+      const scoreText = this.add.text(0, -80 + (index * 25), text, {
+        fontSize: '18px',
+        color: '#1F2937',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+        fontStyle: index === 0 ? 'bold' : 'normal'
+      }).setOrigin(0.5);
+      gameOverContainer.add(scoreText);
+    });
+    
+    // Play Again button
+    const playAgainButton = this.add.rectangle(0, 120, 200, 50, 0x6F47EB, 1);
+    playAgainButton.setStrokeStyle(2, 0x4C2A92, 1);
+    playAgainButton.setInteractive({ cursor: 'pointer' });
+    
+    const playAgainText = this.add.text(0, 120, 'PLAY AGAIN', {
+      fontSize: '20px',
+      color: '#FFFFFF',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    
+    // Main Menu button
+    const mainMenuButton = this.add.rectangle(0, 180, 200, 50, 0x6B7280, 1);
+    mainMenuButton.setStrokeStyle(2, 0x4B5563, 1);
+    mainMenuButton.setInteractive({ cursor: 'pointer' });
+    
+    const mainMenuText = this.add.text(0, 180, 'MAIN MENU', {
+      fontSize: '20px',
+      color: '#FFFFFF',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    
+    // Add all elements to container
+    gameOverContainer.add([
+      bgPanel, gameOverText, playAgainButton, playAgainText, mainMenuButton, mainMenuText
+    ]);
+    
+    // Button interactions
+    playAgainButton.on('pointerover', () => {
+      playAgainButton.setFillStyle(0x8B63EB);
+      this.tweens.add({
+        targets: playAgainButton,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 200,
+        ease: 'Power2.easeOut'
       });
     });
     
-    // Auto-remove after 30 seconds if not used
-    this.time.delayedCall(30000, () => {
-      if (trampoline && trampoline.active) {
-        trampoline.destroy();
-      }
+    playAgainButton.on('pointerout', () => {
+      playAgainButton.setFillStyle(0x6F47EB);
+      this.tweens.add({
+        targets: playAgainButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 200,
+        ease: 'Power2.easeOut'
+      });
     });
     
-    // Animate trampoline appearance
-    trampoline.setAlpha(0);
-    this.tweens.add({
-      targets: trampoline,
-      alpha: 1,
-      scaleY: 1.2,
-      duration: 300,
-      yoyo: true,
-      ease: 'Bounce.easeOut'
+    playAgainButton.on('pointerdown', () => {
+      this.restartGame();
     });
-  }
-
-  private gameOver() {
-    this.scene.pause();
-    this.time.delayedCall(1000, () => {
+    
+    mainMenuButton.on('pointerover', () => {
+      mainMenuButton.setFillStyle(0x9CA3AF);
+      this.tweens.add({
+        targets: mainMenuButton,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 200,
+        ease: 'Power2.easeOut'
+      });
+    });
+    
+    mainMenuButton.on('pointerout', () => {
+      mainMenuButton.setFillStyle(0x6B7280);
+      this.tweens.add({
+        targets: mainMenuButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 200,
+        ease: 'Power2.easeOut'
+      });
+    });
+    
+    mainMenuButton.on('pointerdown', () => {
       this.gameData.onGameOver(this.gameStats.score);
     });
+    
+    // Animate the game over screen
+    gameOverContainer.setAlpha(0);
+    gameOverContainer.setScale(0.8);
+    
+    this.tweens.add({
+      targets: gameOverContainer,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 600,
+      ease: 'Back.easeOut'
+    });
+  }
+  
+  private restartGame() {
+    // Reset game stats
+    this.gameStats = {
+      score: 0,
+      lives: 3,
+      questionsAnswered: 0,
+      correctAnswers: 0,
+      hasShield: false,
+      powerUpsUsed: 0,
+      multiplier: 1,
+      isInvincible: false,
+      invincibilityTimer: 0,
+      enemiesKilled: 0,
+      timeBonus: 0,
+      accuracyBonus: 0,
+      streakBonus: 0,
+      currentStreak: 0,
+      maxStreak: 0,
+      startTime: this.time.now
+    };
+    
+    this.currentQuestionIndex = 0;
+    
+    // Restart the scene
+    this.scene.restart();
   }
 
   private getDefaultQuestions(): Question[] {
@@ -1041,6 +886,7 @@ export default class MainGameScene extends Phaser.Scene {
     return this.player;
   }
 
+  // Enhanced event handlers for complete game systems
   private handleEnemyAttack(data: { damage: number; knockback: number; attacker: any }) {
     const { damage, knockback, attacker } = data;
     
@@ -1058,14 +904,11 @@ export default class MainGameScene extends Phaser.Scene {
     const damageApplied = this.player.takeDamage(damage, knockback, attackerX, attackerY);
     
     if (damageApplied) {
-      // Reduce lives
       this.gameStats.lives--;
       
-      // Check for game over
       if (this.gameStats.lives <= 0) {
         this.gameOver();
       } else {
-        // Respawn player
         this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
       }
     }
@@ -1074,13 +917,26 @@ export default class MainGameScene extends Phaser.Scene {
   private handleEnemyDied(data: { enemy: any }) {
     const { enemy } = data;
     
-    // Award points for killing enemy
-    const points = 50;
+    // Award points for killing enemy with multiplier
+    const basePoints = 50;
+    const points = Math.floor(basePoints * this.gameStats.multiplier);
     this.gameStats.score += points;
+    this.gameStats.enemiesKilled++;
+    
+    // Increase streak
+    this.gameStats.currentStreak++;
+    if (this.gameStats.currentStreak > this.gameStats.maxStreak) {
+      this.gameStats.maxStreak = this.gameStats.currentStreak;
+    }
     
     // Show floating text
     const enemySprite = enemy.getSprite();
-    this.uiSystem.showFloatingText(`+${points}`, enemySprite.x, enemySprite.y, '#00ff00');
+    this.uiSystem.showFloatingText(`+${points}`, enemySprite.x, enemySprite.y, '#6F47EB');
+    
+    // Show streak bonus if applicable
+    if (this.gameStats.currentStreak > 1) {
+      this.uiSystem.showFloatingText(`${this.gameStats.currentStreak}x STREAK!`, enemySprite.x, enemySprite.y - 30, '#6F47EB');
+    }
     
     // Create death particles
     this.particleSystem.createSuccessParticles(enemySprite.x, enemySprite.y);
@@ -1105,14 +961,11 @@ export default class MainGameScene extends Phaser.Scene {
       const damageApplied = this.player.takeDamage(damage, knockback, projectileX, projectileY);
       
       if (damageApplied) {
-        // Reduce lives
         this.gameStats.lives--;
         
-        // Check for game over
         if (this.gameStats.lives <= 0) {
           this.gameOver();
         } else {
-          // Respawn player
           this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
         }
       }
@@ -1144,13 +997,21 @@ export default class MainGameScene extends Phaser.Scene {
     const body = player.body as Phaser.Physics.Arcade.Body;
     body.setVelocityY(-200); // Bounce up
     
-    // Award points for jumping on enemy
-    const points = 25;
+    // Award points for jumping on enemy with multiplier
+    const basePoints = 25;
+    const points = Math.floor(basePoints * this.gameStats.multiplier);
     this.gameStats.score += points;
+    this.gameStats.enemiesKilled++;
+    
+    // Increase streak
+    this.gameStats.currentStreak++;
+    if (this.gameStats.currentStreak > this.gameStats.maxStreak) {
+      this.gameStats.maxStreak = this.gameStats.currentStreak;
+    }
     
     // Show floating text
     const enemySprite = enemy.getSprite();
-    this.uiSystem.showFloatingText(`+${points}`, enemySprite.x, enemySprite.y, '#00ff00');
+    this.uiSystem.showFloatingText(`+${points}`, enemySprite.x, enemySprite.y, '#6F47EB');
     
     // Create bounce particles
     this.particleSystem.createSuccessParticles(enemySprite.x, enemySprite.y);
@@ -1178,7 +1039,93 @@ export default class MainGameScene extends Phaser.Scene {
     
     // Spawn the patrol enemy
     this.enemySystem.spawnEnemy(x, y, walkerConfig);
+  }
+
+  private handleQuestionAnswered(data: { answer: string; isCorrect: boolean; question: any }) {
+    this.gameStats.questionsAnswered++;
     
-    console.log(`Spawned patrol enemy on platform ${patrolId} at (${x}, ${y})`);
+    if (data.isCorrect) {
+      this.gameStats.correctAnswers++;
+      this.handleCorrectUIAnswer(data);
+    } else {
+      this.handleIncorrectUIAnswer(data);
+    }
+    
+    // Clear the question from UI
+    this.uiSystem.clearQuestion();
+    
+    // Move to next question after a delay
+    this.moveToNextQuestion();
+  }
+
+  private handleCorrectUIAnswer(data: { answer: string; isCorrect: boolean; question: any }) {
+    const basePoints = data.question.points || 100;
+    const points = Math.floor(basePoints * this.gameStats.multiplier);
+    
+    this.gameStats.score += points;
+    
+    // Increase answer streak
+    this.gameStats.currentStreak++;
+    if (this.gameStats.currentStreak > this.gameStats.maxStreak) {
+      this.gameStats.maxStreak = this.gameStats.currentStreak;
+    }
+    
+    // Give player a boost
+    this.player.boost();
+    
+    // Create visual effects at player position
+    const player = this.player.getSprite();
+    if (player) {
+      this.particleSystem.createSuccessParticles(player.x, player.y);
+      this.uiSystem.showFloatingText(`+${points}`, player.x, player.y - 50, '#6F47EB');
+      
+      // Show streak bonus if applicable
+      if (this.gameStats.currentStreak > 1) {
+        this.uiSystem.showFloatingText(`${this.gameStats.currentStreak}x STREAK!`, player.x, player.y - 80, '#6F47EB');
+      }
+    }
+    
+    // Screen flash
+    this.cameras.main.flash(200, 111, 71, 235, false);
+  }
+
+  private handleIncorrectUIAnswer(data: { answer: string; isCorrect: boolean; question: any }) {
+    const player = this.player.getSprite();
+    
+    // Break streak on incorrect answer
+    this.gameStats.currentStreak = 0;
+    
+    if (this.gameStats.hasShield) {
+      this.gameStats.hasShield = false;
+      this.player.removeShield();
+      if (player) {
+        this.particleSystem.createShieldBreakParticles(player.x, player.y);
+        this.uiSystem.showFloatingText('SHIELD BROKEN!', player.x, player.y - 50, '#F59E0B');
+      }
+    } else if (this.gameStats.isInvincible) {
+      if (player) {
+        this.particleSystem.createInvincibilityParticles(player.x, player.y);
+        this.uiSystem.showFloatingText('INVINCIBLE!', player.x, player.y - 50, '#6B7280');
+      }
+    } else {
+      this.loseLife();
+    }
+    
+    // Screen shake and failure effects
+    this.cameras.main.shake(300, 0.02);
+    if (player) {
+      this.particleSystem.createFailureParticles(player.x, player.y);
+    }
+  }
+
+  private loseLife() {
+    this.gameStats.lives--;
+    this.cameras.main.flash(300, 255, 0, 0, false);
+
+    if (this.gameStats.lives <= 0) {
+      this.gameOver();
+    } else {
+      this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
+    }
   }
 }

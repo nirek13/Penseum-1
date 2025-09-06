@@ -13,7 +13,7 @@ export class GameConfig {
   static readonly TRAMPOLINE_JUMP_VELOCITY = 1400;
   
   // Platform generation configuration
-  static readonly PLATFORM_REACH_PERCENTAGE = 0.8; // Use 80% of max jump capability
+  static readonly PLATFORM_REACH_PERCENTAGE = 0.5; // Use 80% of max jump capability
   static readonly PLATFORM_SAFETY_MARGIN = 30; // Extra safety margin in pixels
   static readonly MIN_PLATFORM_WIDTH = 150;
   static readonly MAX_PLATFORM_WIDTH = 200;
