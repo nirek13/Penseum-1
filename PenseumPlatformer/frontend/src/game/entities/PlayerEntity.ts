@@ -21,6 +21,13 @@ export default class PlayerEntity {
   private canDoubleJump: boolean = false;
   private doubleJumpTimer: number = 0;
 
+  // Knockback and damage states
+  private isKnockedBack: boolean = false;
+  private knockbackTimer: number = 0;
+  private knockbackDuration: number = 500; // 0.5 seconds
+  private lastDamageTime: number = 0;
+  private damageCooldown: number = 1000; // 1 second invincibility after taking damage
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
     this.sprite = scene.physics.add.sprite(x, y, 'player');
@@ -82,6 +89,15 @@ export default class PlayerEntity {
       const body = this.sprite.body as Phaser.Physics.Arcade.Body;
       if (body.touching.down) {
         this.canDoubleJump = true;
+      }
+    }
+
+    // Update knockback
+    if (this.isKnockedBack) {
+      this.knockbackTimer -= delta;
+      if (this.knockbackTimer <= 0) {
+        this.isKnockedBack = false;
+        this.sprite.clearTint();
       }
     }
 
