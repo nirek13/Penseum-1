@@ -52,6 +52,14 @@ export default class MainGameScene extends Phaser.Scene {
     startTime: 0
   };
 
+  // Height-based question tracking for infinite platformer
+  private questionHeightTracker = {
+    lastQuestionHeight: 0,        // Y position where last question was triggered
+    nextQuestionTriggerHeight: 0, // Y position to trigger next question
+    heightPerQuestion: 2000,      // Estimated height climbed in ~45 seconds
+    hasActiveQuestion: false      // Whether a question UI is currently shown
+  };
+
   constructor() {
     super({ key: 'MainGameScene' });
   }
@@ -98,7 +106,7 @@ export default class MainGameScene extends Phaser.Scene {
 
     this.setupPhysics();
     this.setupCamera();
-    this.createFirstQuestion();
+    this.setupInfinitePlatformer();
     
     // Setup collisions AFTER platforms are created
     this.setupCollisions();
@@ -441,28 +449,43 @@ export default class MainGameScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(100, 150); // Deadzone for smoother following
   }
 
-  private createFirstQuestion() {
+  private setupInfinitePlatformer() {
     // Always create initial platforms for gameplay
     this.platformSystem.createInitialPlatforms();
     
-    // Create question platforms if questions are available
+    // Initialize height tracking for questions
+    const player = this.player.getSprite();
+    if (player) {
+      // Set initial question height tracking based on starting player position
+      this.questionHeightTracker.lastQuestionHeight = player.y;
+      this.questionHeightTracker.nextQuestionTriggerHeight = player.y - this.questionHeightTracker.heightPerQuestion;
+    }
+    
+    // Set up continuous platform generation for infinite climbing
+    this.time.addEvent({
+      delay: 3000, // Every 3 seconds
+      callback: () => {
+        const playerSprite = this.player.getSprite();
+        if (playerSprite) {
+          this.platformSystem.generateProceduralPlatforms(playerSprite.y);
+        }
+      },
+      loop: true
+    });
+    
+    // Set up periodic power-up spawning
+    this.time.addEvent({
+      delay: 8000, // Every 8 seconds
+      callback: () => {
+        this.spawnRandomPowerUp();
+      },
+      loop: true
+    });
+    
+    // Show first question after a short delay to let player get oriented
     if (this.questions.length > 0) {
-      // Delay question platforms to let player get familiar with controls
-      this.time.delayedCall(3000, () => {
-        this.platformSystem.createPlatformsForQuestion(this.questions[this.currentQuestionIndex]);
-      });
-      this.spawnRandomPowerUp();
-    } else {
-      // If no questions, just create more procedural platforms
-      this.time.addEvent({
-        delay: 5000,
-        callback: () => {
-          const player = this.player.getSprite();
-          if (player) {
-            this.platformSystem.generateProceduralPlatforms(player.y);
-          }
-        },
-        loop: true
+      this.time.delayedCall(5000, () => {
+        this.showHeightBasedQuestion();
       });
     }
   }
@@ -536,6 +559,9 @@ export default class MainGameScene extends Phaser.Scene {
       if (time % 5000 < 16) { // Every 5 seconds approximately
         this.platformSystem.cleanupDistantPlatforms(player.y);
       }
+      
+      // Height-based question triggering
+      this.checkHeightBasedQuestionTrigger(player.y);
     }
   }
 
@@ -653,16 +679,9 @@ export default class MainGameScene extends Phaser.Scene {
   }
 
   private moveToNextQuestion() {
-    this.currentQuestionIndex++;
-
-    if (this.currentQuestionIndex >= this.questions.length) {
-      this.currentQuestionIndex = 0;
-    }
-
-    this.time.delayedCall(2000, () => {
-      this.platformSystem.createPlatformsForQuestion(this.questions[this.currentQuestionIndex]);
-      this.spawnRandomPowerUp();
-    });
+    // For the new infinite platformer, questions are handled via height-based triggers
+    // So we just clear the current question and move to the next one
+    this.clearHeightBasedQuestion();
   }
 
   private spawnRandomPowerUp() {
@@ -1160,5 +1179,60 @@ export default class MainGameScene extends Phaser.Scene {
     // Any life loss now restarts the entire game
     this.cameras.main.flash(300, 255, 0, 0, false);
     this.restartGame();
+  }
+
+  // Height-based question triggering methods for infinite platformer
+  private checkHeightBasedQuestionTrigger(currentPlayerY: number) {
+    // Only proceed if we have questions and no active question is showing
+    if (this.questions.length === 0 || this.questionHeightTracker.hasActiveQuestion) {
+      return;
+    }
+    
+    // Check if player has climbed enough to trigger next question
+    // Since Y decreases as player climbs up, we check if current Y is <= trigger height
+    if (currentPlayerY <= this.questionHeightTracker.nextQuestionTriggerHeight) {
+      this.showHeightBasedQuestion();
+    }
+  }
+  
+  private showHeightBasedQuestion() {
+    if (this.questions.length === 0 || this.questionHeightTracker.hasActiveQuestion) {
+      return;
+    }
+    
+    // Mark question as active
+    this.questionHeightTracker.hasActiveQuestion = true;
+    
+    // Get current question
+    const question = this.questions[this.currentQuestionIndex];
+    
+    // Update height tracking
+    const player = this.player.getSprite();
+    if (player) {
+      this.questionHeightTracker.lastQuestionHeight = player.y;
+      this.questionHeightTracker.nextQuestionTriggerHeight = player.y - this.questionHeightTracker.heightPerQuestion;
+    }
+    
+    // Show question via UI system overlay
+    this.uiSystem.showQuestion(question);
+    
+    // Add visual indicator that a question appeared
+    this.cameras.main.flash(300, 111, 71, 235, false);
+    
+    // Show floating notification
+    if (player) {
+      this.uiSystem.showFloatingText('New Question!', player.x, player.y - 100, '#6F47EB');
+    }
+  }
+  
+  private clearHeightBasedQuestion() {
+    // Mark question as no longer active
+    this.questionHeightTracker.hasActiveQuestion = false;
+    
+    // Move to next question
+    this.currentQuestionIndex++;
+    if (this.currentQuestionIndex >= this.questions.length) {
+      this.currentQuestionIndex = 0;
+    }
   }
 }
