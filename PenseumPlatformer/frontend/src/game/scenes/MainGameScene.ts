@@ -429,11 +429,13 @@ export default class MainGameScene extends Phaser.Scene {
   }
 
   private setupPhysics() {
-    this.physics.world.setBounds(0, -10000, this.cameras.main.width, this.cameras.main.height + 10200);
+    // Expand world bounds for infinite climbing - much larger upper bound
+    this.physics.world.setBounds(0, -100000, this.cameras.main.width, this.cameras.main.height + 100200);
   }
   
   private setupCamera() {
-    this.cameras.main.setBounds(0, -10000, this.cameras.main.width, this.cameras.main.height + 10200);
+    // Match camera bounds to expanded physics world for infinite climbing
+    this.cameras.main.setBounds(0, -100000, this.cameras.main.width, this.cameras.main.height + 100200);
     this.cameras.main.startFollow(this.player.getSprite());
     this.cameras.main.setFollowOffset(0, 100); // Offset so player is slightly below center
     this.cameras.main.setDeadzone(100, 150); // Deadzone for smoother following
@@ -539,9 +541,32 @@ export default class MainGameScene extends Phaser.Scene {
 
   private checkGameBounds() {
     const player = this.player.getSprite();
-    if (player && player.y > this.cameras.main.height + 100) {
+    if (!player) return;
+    
+    const body = player.body as Phaser.Physics.Arcade.Body;
+    
+    // Check bottom boundary for fall death (keep this mechanic)
+    if (player.y > this.cameras.main.height + 100) {
       this.loseLife();
     }
+    
+    // Manual side boundary checks (since we removed world bounds collision)
+    const screenWidth = this.cameras.main.width;
+    const playerWidth = player.width * player.scaleX;
+    
+    // Left boundary
+    if (player.x < 0) {
+      player.x = 0;
+      body.setVelocityX(0);
+    }
+    
+    // Right boundary  
+    if (player.x + playerWidth > screenWidth) {
+      player.x = screenWidth - playerWidth;
+      body.setVelocityX(0);
+    }
+    
+    // No upper boundary check - allow infinite climbing!
   }
 
   private handleAnswerSelected(data: { platform: Platform; isCorrect: boolean }) {
@@ -577,10 +602,10 @@ export default class MainGameScene extends Phaser.Scene {
       this.gameStats.hasShield = false;
       this.player.removeShield();
       this.particleSystem.createShieldBreakParticles(platform.x + platform.width / 2, platform.y);
-      this.uiSystem.showFloatingText('SHIELD BROKEN!', platform.x + platform.width / 2, platform.y, '#ffd93d');
+      this.uiSystem.showFloatingText('SHIELD BROKEN!', platform.x + platform.width / 2, platform.y, '#6F47EB');
     } else if (this.gameStats.isInvincible) {
       this.particleSystem.createInvincibilityParticles(platform.x + platform.width / 2, platform.y);
-      this.uiSystem.showFloatingText('INVINCIBLE!', platform.x + platform.width / 2, platform.y, '#ffd93d');
+      this.uiSystem.showFloatingText('INVINCIBLE!', platform.x + platform.width / 2, platform.y, '#6F47EB');
     } else {
       this.loseLife();
     }
@@ -904,13 +929,8 @@ export default class MainGameScene extends Phaser.Scene {
     const damageApplied = this.player.takeDamage(damage, knockback, attackerX, attackerY);
     
     if (damageApplied) {
-      this.gameStats.lives--;
-      
-      if (this.gameStats.lives <= 0) {
-        this.gameOver();
-      } else {
-        this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
-      }
+      // Any damage restarts the entire game
+      this.restartGame();
     }
   }
 
@@ -942,10 +962,33 @@ export default class MainGameScene extends Phaser.Scene {
     this.particleSystem.createSuccessParticles(enemySprite.x, enemySprite.y);
   }
 
-  private handlePlayerDamaged(data: { damage: number; knockback: number }) {
-    // Update UI to show damage
-    this.cameras.main.flash(100, 255, 0, 0, false);
-    this.cameras.main.shake(200, 0.01);
+  private handlePlayerDamaged(data: { damage: number; knockback?: number; source?: string; objectType?: string }) {
+    const { source, objectType } = data;
+    
+    // Check shields and invincibility first
+    if (this.gameStats.hasShield) {
+      this.gameStats.hasShield = false;
+      this.player.removeShield();
+      this.particleSystem.createShieldBreakParticles(this.player.getSprite().x, this.player.getSprite().y);
+      this.uiSystem.showFloatingText('SHIELD BROKEN!', this.player.getSprite().x, this.player.getSprite().y - 50, '#6F47EB');
+      return;
+    }
+    
+    if (this.gameStats.isInvincible) {
+      this.particleSystem.createInvincibilityParticles(this.player.getSprite().x, this.player.getSprite().y);
+      this.uiSystem.showFloatingText('INVINCIBLE!', this.player.getSprite().x, this.player.getSprite().y - 50, '#6F47EB');
+      return;
+    }
+    
+    // Show damage source message
+    if (source === 'falling-object' && objectType) {
+      this.uiSystem.showFloatingText(`Hit by ${objectType}!`, this.cameras.main.width / 2, this.cameras.main.height / 2, '#6F47EB');
+    } else if (source === 'explosion') {
+      this.uiSystem.showFloatingText('EXPLOSION!', this.cameras.main.width / 2, this.cameras.main.height / 2, '#6F47EB');
+    }
+    
+    // Any damage restarts the entire game
+    this.restartGame();
   }
 
   private handleProjectileHit(data: { damage: number; knockback: number; target: any; projectile: any; owner: string }) {
@@ -961,13 +1004,8 @@ export default class MainGameScene extends Phaser.Scene {
       const damageApplied = this.player.takeDamage(damage, knockback, projectileX, projectileY);
       
       if (damageApplied) {
-        this.gameStats.lives--;
-        
-        if (this.gameStats.lives <= 0) {
-          this.gameOver();
-        } else {
-          this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
-        }
+        // Any damage restarts the entire game
+        this.restartGame();
       }
     }
   }
@@ -1100,12 +1138,12 @@ export default class MainGameScene extends Phaser.Scene {
       this.player.removeShield();
       if (player) {
         this.particleSystem.createShieldBreakParticles(player.x, player.y);
-        this.uiSystem.showFloatingText('SHIELD BROKEN!', player.x, player.y - 50, '#F59E0B');
+        this.uiSystem.showFloatingText('SHIELD BROKEN!', player.x, player.y - 50, '#6F47EB');
       }
     } else if (this.gameStats.isInvincible) {
       if (player) {
         this.particleSystem.createInvincibilityParticles(player.x, player.y);
-        this.uiSystem.showFloatingText('INVINCIBLE!', player.x, player.y - 50, '#6B7280');
+        this.uiSystem.showFloatingText('INVINCIBLE!', player.x, player.y - 50, '#6F47EB');
       }
     } else {
       this.loseLife();
@@ -1119,13 +1157,8 @@ export default class MainGameScene extends Phaser.Scene {
   }
 
   private loseLife() {
-    this.gameStats.lives--;
+    // Any life loss now restarts the entire game
     this.cameras.main.flash(300, 255, 0, 0, false);
-
-    if (this.gameStats.lives <= 0) {
-      this.gameOver();
-    } else {
-      this.player.respawn(this.cameras.main.width / 2, this.cameras.main.height - 150);
-    }
+    this.restartGame();
   }
 }

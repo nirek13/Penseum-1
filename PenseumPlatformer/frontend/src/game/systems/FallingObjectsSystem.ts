@@ -231,7 +231,7 @@ export default class FallingObjectsSystem {
       if (!fallingObject.sprite.active) return;
       
       trail.clear();
-      trail.lineStyle(3, 0xff0000, 0.8);
+      trail.lineStyle(3, 0x6F47EB, 0.8);
       trail.moveTo(fallingObject.sprite.x, fallingObject.sprite.y);
       trail.lineTo(fallingObject.sprite.x, fallingObject.sprite.y + 20);
       trail.strokePath();
@@ -256,7 +256,7 @@ export default class FallingObjectsSystem {
             fallingObject.sprite.x + Phaser.Math.Between(-15, 15),
             fallingObject.sprite.y + Phaser.Math.Between(-15, 15),
             2,
-            0x87CEEB
+            0x6F47EB
           );
           
           this.scene.tweens.add({
@@ -285,7 +285,7 @@ export default class FallingObjectsSystem {
           fallingObject.sprite.x,
           fallingObject.sprite.y + 20,
           3,
-          0x32CD32
+          0x6F47EB
         );
         
         this.scene.tweens.add({
@@ -445,12 +445,12 @@ export default class FallingObjectsSystem {
 
   private createSpawnEffect(x: number, y: number) {
     // Enhanced warning indicator with premium effects
-    const warningOuter = this.scene.add.circle(x, y + 30, 25, 0xFF4444, 0.2);
-    const warning = this.scene.add.circle(x, y + 30, 20, 0xFF0000, 0.4);
-    const warningInner = this.scene.add.circle(x, y + 30, 15, 0xFF6666, 0.6);
+    const warningOuter = this.scene.add.circle(x, y + 30, 25, 0x6F47EB, 0.2);
+    const warning = this.scene.add.circle(x, y + 30, 20, 0x6F47EB, 0.4);
+    const warningInner = this.scene.add.circle(x, y + 30, 15, 0xFFFFFF, 0.6);
     
-    warningOuter.setStrokeStyle(2, 0xFF0000, 0.6);
-    warning.setStrokeStyle(3, 0xFF0000, 0.9);
+    warningOuter.setStrokeStyle(2, 0x6F47EB, 0.6);
+    warning.setStrokeStyle(3, 0x6F47EB, 0.9);
     warningInner.setStrokeStyle(1, 0xFFFFFF, 0.8);
 
     // Multi-layer pulsing animation
@@ -471,7 +471,7 @@ export default class FallingObjectsSystem {
     // Add ripple effect
     for (let i = 0; i < 3; i++) {
       const ripple = this.scene.add.circle(x, y + 30, 10, undefined);
-      ripple.setStrokeStyle(2, 0xFF4444, 0.6);
+      ripple.setStrokeStyle(2, 0x6F47EB, 0.6);
       
       this.scene.tweens.add({
         targets: ripple,
@@ -486,14 +486,14 @@ export default class FallingObjectsSystem {
 
   private createImpactEffect(x: number, y: number, type: FallingObject['type']) {
     const colors = {
-      rock: { main: 0x8B4513, secondary: 0xD2691E, accent: 0xF4A460 },
-      spike: { main: 0xFF0000, secondary: 0xFF4444, accent: 0xFF6666 },
-      bomb: { main: 0xFF4500, secondary: 0xFF6347, accent: 0xFFFF00 },
-      ice: { main: 0x87CEEB, secondary: 0xADD8E6, accent: 0xFFFFFF },
-      acid: { main: 0x32CD32, secondary: 0x7FFF00, accent: 0x9AFF9A }
+      rock: { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB },
+      spike: { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB },
+      bomb: { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB },
+      ice: { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB },
+      acid: { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB }
     };
     
-    const colorSet = colors[type] || { main: 0xFFFFFF, secondary: 0xCCCCCC, accent: 0x999999 };
+    const colorSet = colors[type] || { main: 0x6F47EB, secondary: 0xFFFFFF, accent: 0x6F47EB };
 
     // Enhanced impact particles with multiple sizes and colors
     for (let i = 0; i < 10; i++) {
@@ -553,7 +553,7 @@ export default class FallingObjectsSystem {
     
     // Core explosion particles
     for (let i = 0; i < 16; i++) {
-      const colors = [0xFF4500, 0xFF0000, 0xFF6347, 0xFFFF00, 0xFFA500];
+      const colors = [0x6F47EB, 0xFFFFFF, 0x6F47EB, 0xFFFFFF, 0x6F47EB];
       const particle = this.scene.add.circle(
         x + Phaser.Math.Between(-25, 25),
         y + Phaser.Math.Between(-25, 25),
@@ -585,7 +585,7 @@ export default class FallingObjectsSystem {
         y + Phaser.Math.Between(-15, 15),
         Phaser.Math.Between(3, 8),
         Phaser.Math.Between(3, 8),
-        0x4A4A4A
+        0x6F47EB
       );
 
       const velocityX = Phaser.Math.Between(-200, 200);
@@ -618,7 +618,7 @@ export default class FallingObjectsSystem {
     // Explosion shockwave rings
     for (let i = 0; i < 3; i++) {
       const ring = this.scene.add.circle(x, y, 20, undefined);
-      ring.setStrokeStyle(6 - (i * 2), 0xFF4500, 0.8 - (i * 0.2));
+      ring.setStrokeStyle(6 - (i * 2), 0x6F47EB, 0.8 - (i * 0.2));
       
       this.scene.tweens.add({
         targets: ring,

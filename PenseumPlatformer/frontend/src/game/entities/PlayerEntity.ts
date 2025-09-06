@@ -38,7 +38,7 @@ export default class PlayerEntity {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
     this.sprite = scene.physics.add.sprite(x, y, 'player');
-    this.sprite.setCollideWorldBounds(true);
+    this.sprite.setCollideWorldBounds(false); // Allow infinite climbing - no ceiling limit
     this.sprite.setBounce(0.2);
     this.sprite.setScale(1.2);
     
