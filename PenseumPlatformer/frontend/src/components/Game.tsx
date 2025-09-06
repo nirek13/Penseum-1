@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import MainGameScene from '../game/scenes/MainGameScene';
 import { fetchRandomQuestions } from '../utils/api';
-
+//nirek
 interface GameProps {
   playerName: string;
   onGameOver: (score: number) => void;
