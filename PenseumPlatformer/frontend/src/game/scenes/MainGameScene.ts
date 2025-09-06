@@ -5,6 +5,8 @@ import PlatformSystem from '../systems/PlatformSystem';
 import PowerUpSystem from '../systems/PowerUpSystem';
 import ParticleSystem from '../systems/ParticleSystem';
 import UISystem from '../systems/UISystem';
+import EnemySystem from '../systems/EnemySystem';
+import ProjectileSystem from '../systems/ProjectileSystem';
 import { GameConfig } from '../config/GameConfig';
 
 interface SceneData {
@@ -19,6 +21,8 @@ export default class MainGameScene extends Phaser.Scene {
   private powerUpSystem!: PowerUpSystem;
   private particleSystem!: ParticleSystem;
   private uiSystem!: UISystem;
+  private enemySystem!: EnemySystem;
+  private projectileSystem!: ProjectileSystem;
 
   private questions: Question[] = [];
   private currentQuestionIndex = 0;
@@ -75,6 +79,8 @@ export default class MainGameScene extends Phaser.Scene {
     this.powerUpSystem = new PowerUpSystem(this);
     this.particleSystem = new ParticleSystem(this);
     this.uiSystem = new UISystem(this);
+    this.enemySystem = new EnemySystem(this);
+    this.projectileSystem = new ProjectileSystem(this);
 
     this.setupPhysics();
     this.setupCamera();
@@ -92,6 +98,10 @@ export default class MainGameScene extends Phaser.Scene {
     this.events.on('answer-selected', this.handleAnswerSelected, this);
     this.events.on('power-up-collected', this.handlePowerUpCollected, this);
     this.events.on('question-answered', this.handleQuestionAnswered, this);
+    this.events.on('enemy-attack', this.handleEnemyAttack, this);
+    this.events.on('enemy-died', this.handleEnemyDied, this);
+    this.events.on('player-damaged', this.handlePlayerDamaged, this);
+    this.events.on('projectile-hit', this.handleProjectileHit, this);
   }
 
   private setupCollisions() {
@@ -100,6 +110,8 @@ export default class MainGameScene extends Phaser.Scene {
     if (playerSprite && playerSprite.body) {
       this.platformSystem.setupPlayerCollision(playerSprite);
       this.powerUpSystem.setupPlayerCollision(playerSprite);
+      this.enemySystem.setupPlayerCollision(playerSprite);
+      this.projectileSystem.setupPlayerCollision(playerSprite);
     }
   }
 
@@ -109,6 +121,8 @@ export default class MainGameScene extends Phaser.Scene {
     this.powerUpSystem.update(time, delta);
     this.particleSystem.update(time, delta);
     this.uiSystem.update(this.gameStats);
+    this.enemySystem.update(time, delta, this.player.getSprite());
+    this.projectileSystem.update(time, delta);
 
     this.handleInput();
     this.updateGameLogic(time, delta);

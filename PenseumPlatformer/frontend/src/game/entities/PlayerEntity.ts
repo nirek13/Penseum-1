@@ -409,6 +409,166 @@ export default class PlayerEntity {
     return this.canDoubleJump;
   }
 
+  // Knockback and damage methods
+  takeDamage(damage: number, knockbackForce: number, attackerX?: number, attackerY?: number) {
+    const currentTime = this.scene.time.now;
+    
+    // Check if player is in damage cooldown
+    if (currentTime - this.lastDamageTime < this.damageCooldown) {
+      return false;
+    }
+    
+    // Check if player has shield
+    if (this.hasShield) {
+      this.removeShield();
+      this.createShieldBreakEffect();
+      return false;
+    }
+    
+    // Check if player is invincible
+    if (this.isInvincible) {
+      this.createInvincibilityEffect();
+      return false;
+    }
+    
+    // Apply damage
+    this.lastDamageTime = currentTime;
+    
+    // Apply knockback
+    this.applyKnockback(knockbackForce, attackerX, attackerY);
+    
+    // Visual damage effect
+    this.createDamageEffect();
+    
+    // Emit damage event
+    this.scene.events.emit('player-damaged', { damage, knockbackForce });
+    
+    return true;
+  }
+
+  private applyKnockback(force: number, attackerX?: number, attackerY?: number) {
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    
+    // Calculate knockback direction
+    let knockbackX = 0;
+    let knockbackY = -force * 0.7; // Always knock up
+    
+    if (attackerX !== undefined && attackerY !== undefined) {
+      // Knock away from attacker
+      const direction = this.sprite.x > attackerX ? 1 : -1;
+      knockbackX = direction * force * 0.5;
+    } else {
+      // Random horizontal knockback
+      knockbackX = (Math.random() > 0.5 ? 1 : -1) * force * 0.3;
+    }
+    
+    // Apply knockback
+    body.setVelocity(knockbackX, knockbackY);
+    
+    // Set knockback state
+    this.isKnockedBack = true;
+    this.knockbackTimer = this.knockbackDuration;
+    
+    // Visual knockback effect
+    this.sprite.setTint(0xff0000);
+    
+    // Screen shake
+    this.scene.cameras.main.shake(200, 0.01);
+  }
+
+  private createDamageEffect() {
+    // Create damage particles
+    for (let i = 0; i < 6; i++) {
+      const particle = this.scene.add.circle(
+        this.sprite.x + Phaser.Math.Between(-10, 10),
+        this.sprite.y + Phaser.Math.Between(-10, 10),
+        Phaser.Math.Between(2, 4),
+        0xff0000
+      );
+      
+      const velocityX = Phaser.Math.Between(-100, 100);
+      const velocityY = Phaser.Math.Between(-150, -50);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: particle.x + velocityX,
+        y: particle.y + velocityY,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 500,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  private createShieldBreakEffect() {
+    // Create shield break particles
+    for (let i = 0; i < 8; i++) {
+      const particle = this.scene.add.circle(
+        this.sprite.x + Phaser.Math.Between(-15, 15),
+        this.sprite.y + Phaser.Math.Between(-15, 15),
+        Phaser.Math.Between(3, 6),
+        0x4ecdc4
+      );
+      
+      const velocityX = Phaser.Math.Between(-150, 150);
+      const velocityY = Phaser.Math.Between(-200, -100);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: particle.x + velocityX,
+        y: particle.y + velocityY,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 800,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  private createInvincibilityEffect() {
+    // Create invincibility particles
+    for (let i = 0; i < 4; i++) {
+      const particle = this.scene.add.circle(
+        this.sprite.x + Phaser.Math.Between(-8, 8),
+        this.sprite.y + Phaser.Math.Between(-8, 8),
+        Phaser.Math.Between(2, 4),
+        0xffd93d
+      );
+      
+      const velocityX = Phaser.Math.Between(-50, 50);
+      const velocityY = Phaser.Math.Between(-100, -50);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: particle.x + velocityX,
+        y: particle.y + velocityY,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 400,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  getIsKnockedBack() {
+    return this.isKnockedBack;
+  }
+
+  getLastDamageTime() {
+    return this.lastDamageTime;
+  }
+
+  getDamageCooldown() {
+    return this.damageCooldown;
+  }
+
   destroy() {
     if (this.shieldEffect) {
       this.shieldEffect.destroy();
