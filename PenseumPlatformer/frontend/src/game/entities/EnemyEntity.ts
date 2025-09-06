@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameConfig } from '../config/GameConfig';
 
 export interface EnemyConfig {
-  type: 'shooter' | 'melee' | 'bomber';
+  type: 'shooter' | 'melee' | 'bomber' | 'walker';
   health: number;
   speed: number;
   attackRange: number;
@@ -11,6 +11,7 @@ export interface EnemyConfig {
   knockbackForce: number;
   color: number;
   size: number;
+  canBeJumpedOn: boolean;
 }
 
 export default class EnemyEntity {
@@ -25,26 +26,40 @@ export default class EnemyEntity {
   private attackEffect?: Phaser.GameObjects.Sprite;
   private healthBar?: Phaser.GameObjects.Graphics;
   private healthBarBackground?: Phaser.GameObjects.Graphics;
+  private isOnGround: boolean = false;
+  private platforms?: Phaser.Physics.Arcade.StaticGroup;
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: EnemyConfig) {
     this.scene = scene;
     this.config = config;
     this.health = config.health;
     
-    // Create enemy sprite
-    this.sprite = scene.physics.add.sprite(x, y, 'enemy');
+    // Create enemy sprite with type-specific texture
+    const textureKey = `enemy-${config.type}`;
+    this.sprite = scene.physics.add.sprite(x, y, textureKey);
     this.sprite.setCollideWorldBounds(false);
     this.sprite.setBounce(0.1);
     this.sprite.setScale(config.size);
+    this.sprite.setTint(config.color);
     
     // Set physics body
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setSize(24, 24);
     body.setOffset(4, 4);
     body.setAllowGravity(true);
+    body.setCollideWorldBounds(false);
     
     this.setupAnimations();
     this.createHealthBar();
+  }
+
+  setPlatforms(platforms: Phaser.Physics.Arcade.StaticGroup) {
+    this.platforms = platforms;
+    
+    // Set up collision with platforms
+    if (this.platforms) {
+      this.scene.physics.add.collider(this.sprite, this.platforms);
+    }
   }
 
   private setupAnimations() {
@@ -83,8 +98,11 @@ export default class EnemyEntity {
     this.healthBar = this.scene.add.graphics();
     this.updateHealthBar();
     
-    // Attach to sprite
-    this.sprite.add([this.healthBarBackground, this.healthBar]);
+    // Position health bars relative to enemy sprite
+    this.healthBarBackground.x = this.sprite.x;
+    this.healthBarBackground.y = this.sprite.y;
+    this.healthBar.x = this.sprite.x;
+    this.healthBar.y = this.sprite.y;
   }
 
   private updateHealthBar() {
@@ -97,6 +115,14 @@ export default class EnemyEntity {
     this.healthBar.clear();
     this.healthBar.fillStyle(0xff0000, 1);
     this.healthBar.fillRect(-barWidth / 2, -20, barWidth * healthPercent, barHeight);
+    
+    // Update positions to follow enemy
+    this.healthBar.x = this.sprite.x;
+    this.healthBar.y = this.sprite.y;
+    if (this.healthBarBackground) {
+      this.healthBarBackground.x = this.sprite.x;
+      this.healthBarBackground.y = this.sprite.y;
+    }
   }
 
   update(time: number, delta: number, playerSprite: Phaser.Physics.Arcade.Sprite) {
@@ -106,6 +132,10 @@ export default class EnemyEntity {
       this.sprite.x, this.sprite.y,
       playerSprite.x, playerSprite.y
     );
+
+    // Check if enemy is on ground
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    this.isOnGround = body.touching.down;
 
     // Update direction based on player position
     if (time - this.lastDirectionChange > 1000) {
@@ -124,15 +154,12 @@ export default class EnemyEntity {
       case 'bomber':
         this.updateBomberBehavior(time, delta, playerSprite, distanceToPlayer);
         break;
+      case 'walker':
+        this.updateWalkerBehavior(time, delta, playerSprite, distanceToPlayer);
+        break;
     }
 
-    // Update health bar position
-    if (this.healthBar && this.healthBarBackground) {
-      this.healthBar.x = this.sprite.x;
-      this.healthBar.y = this.sprite.y;
-      this.healthBarBackground.x = this.sprite.x;
-      this.healthBarBackground.y = this.sprite.y;
-    }
+    // Health bar position is updated in updateHealthBar method
   }
 
   private updateShooterBehavior(time: number, delta: number, playerSprite: Phaser.Physics.Arcade.Sprite, distanceToPlayer: number) {
@@ -181,38 +208,82 @@ export default class EnemyEntity {
   }
 
   private shootAtPlayer(playerSprite: Phaser.Physics.Arcade.Sprite) {
-    // Create projectile
-    const projectile = this.scene.physics.add.sprite(this.sprite.x, this.sprite.y, 'projectile');
-    projectile.setScale(0.5);
-    
-    // Calculate direction to player
-    const angle = Phaser.Math.Angle.Between(
-      this.sprite.x, this.sprite.y,
-      playerSprite.x, playerSprite.y
-    );
-    
-    // Set projectile velocity
-    const projectileSpeed = 200;
-    const body = projectile.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(
-      Math.cos(angle) * projectileSpeed,
-      Math.sin(angle) * projectileSpeed
-    );
-    
-    // Set projectile data
-    projectile.setData('damage', this.config.attackDamage);
-    projectile.setData('knockback', this.config.knockbackForce);
-    projectile.setData('owner', 'enemy');
+    // Emit event to create projectile via ProjectileSystem
+    this.scene.events.emit('enemy-shoot', {
+      x: this.sprite.x,
+      y: this.sprite.y,
+      targetX: playerSprite.x,
+      targetY: playerSprite.y,
+      damage: this.config.attackDamage,
+      knockback: this.config.knockbackForce,
+      owner: 'enemy'
+    });
     
     // Visual effect
     this.createAttackEffect();
+  }
+
+  private updateWalkerBehavior(time: number, delta: number, playerSprite: Phaser.Physics.Arcade.Sprite, distanceToPlayer: number) {
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     
-    // Destroy projectile after time
-    this.scene.time.delayedCall(3000, () => {
-      if (projectile && projectile.active) {
-        projectile.destroy();
+    // Only move if on ground
+    if (this.isOnGround) {
+      // Move towards player
+      body.setVelocityX(this.direction * this.config.speed);
+      
+      // Check for platform edges and turn around
+      this.checkForPlatformEdges();
+    } else {
+      // Stop horizontal movement when in air
+      body.setVelocityX(0);
+    }
+    
+    // Attack when close enough
+    if (distanceToPlayer <= this.config.attackRange && time - this.lastAttackTime > this.config.shootCooldown) {
+      this.meleeAttack(playerSprite);
+      this.lastAttackTime = time;
+    }
+  }
+
+  private checkForPlatformEdges() {
+    if (!this.platforms) return;
+    
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    const checkDistance = 20;
+    const checkY = this.sprite.y + 20; // Check below the enemy
+    
+    // Check if there's a platform ahead
+    const checkX = this.sprite.x + (this.direction * checkDistance);
+    
+    let hasPlatformAhead = false;
+    this.platforms.children.entries.forEach(platform => {
+      const platformSprite = platform as Phaser.Physics.Arcade.Sprite;
+      if (platformSprite.x <= checkX && 
+          platformSprite.x + platformSprite.width >= checkX &&
+          platformSprite.y >= checkY - 10 && 
+          platformSprite.y <= checkY + 10) {
+        hasPlatformAhead = true;
       }
     });
+    
+    // Turn around if no platform ahead
+    if (!hasPlatformAhead) {
+      this.direction *= -1;
+    }
+  }
+
+  // Method to handle being jumped on
+  handleJumpedOn() {
+    if (this.config.canBeJumpedOn) {
+      this.takeDamage(this.health); // Instant kill
+      
+      // Create bounce effect for player
+      this.scene.events.emit('enemy-jumped-on', { enemy: this });
+    }
+  }
+
+  getIsOnGround() {
+    return this.isOnGround;
   }
 
   private meleeAttack(playerSprite: Phaser.Physics.Arcade.Sprite) {

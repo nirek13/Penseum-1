@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import EnemyEntity, { EnemyConfig } from '../entities/EnemyEntity';
+import ProjectileSystem, { ProjectileConfig } from './ProjectileSystem';
 import { GameConfig } from '../config/GameConfig';
 
 export default class EnemySystem {
@@ -11,6 +12,7 @@ export default class EnemySystem {
   private spawnInterval: number = 5000; // 5 seconds between spawns
   private maxEnemies: number = 5;
   private playerSprite?: Phaser.Physics.Arcade.Sprite;
+  private projectileSystem?: ProjectileSystem;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -30,7 +32,8 @@ export default class EnemySystem {
       shootCooldown: 2000,
       knockbackForce: 100,
       color: 0xff0000,
-      size: 1.0
+      size: 1.0,
+      canBeJumpedOn: true
     });
 
     // Melee enemy - attacks up close
@@ -43,7 +46,8 @@ export default class EnemySystem {
       shootCooldown: 1500,
       knockbackForce: 150,
       color: 0x8B0000,
-      size: 1.2
+      size: 1.2,
+      canBeJumpedOn: true
     });
 
     // Bomber enemy - explodes when close
@@ -56,7 +60,22 @@ export default class EnemySystem {
       shootCooldown: 3000,
       knockbackForce: 200,
       color: 0x4B0000,
-      size: 1.5
+      size: 1.5,
+      canBeJumpedOn: true
+    });
+
+    // Walker enemy - chases player across platforms
+    this.enemyConfigs.set('walker', {
+      type: 'walker',
+      health: 1,
+      speed: 60,
+      attackRange: 30,
+      attackDamage: 1,
+      shootCooldown: 1000,
+      knockbackForce: 80,
+      color: 0x006400,
+      size: 1.0,
+      canBeJumpedOn: true
     });
   }
 
@@ -69,17 +88,7 @@ export default class EnemySystem {
       }
     });
 
-    // Enemy vs player collision
-    this.scene.physics.add.collider(
-      this.scene.children.list.filter(child => 
-        child instanceof Phaser.Physics.Arcade.Sprite && 
-        child.getData('type') === 'player'
-      ),
-      this.enemies.map(enemy => enemy.getSprite()),
-      (player, enemy) => {
-        this.handleEnemyCollision(player as Phaser.Physics.Arcade.Sprite, enemy as Phaser.Physics.Arcade.Sprite);
-      }
-    );
+    // Enemy vs player collision will be set up after enemies are created
   }
 
   setupPlayerCollision(playerSprite: Phaser.Physics.Arcade.Sprite) {
@@ -90,6 +99,10 @@ export default class EnemySystem {
     this.scene.physics.add.overlap(this.projectiles, playerSprite, (projectile, player) => {
       this.handleProjectileHit(projectile as Phaser.Physics.Arcade.Sprite, player as Phaser.Physics.Arcade.Sprite);
     });
+  }
+
+  setProjectileSystem(projectileSystem: ProjectileSystem) {
+    this.projectileSystem = projectileSystem;
   }
 
   private handleProjectileHit(projectile: Phaser.Physics.Arcade.Sprite, player: Phaser.Physics.Arcade.Sprite) {
@@ -176,8 +189,26 @@ export default class EnemySystem {
     enemy.getSprite().setData('type', 'enemy');
     enemy.getSprite().setData('enemyEntity', enemy);
     
+    // Set up collision with player if player exists
+    if (this.playerSprite) {
+      this.scene.physics.add.overlap(
+        this.playerSprite,
+        enemy.getSprite(),
+        (player, enemy) => {
+          this.handleEnemyCollision(player as Phaser.Physics.Arcade.Sprite, enemy as Phaser.Physics.Arcade.Sprite);
+        }
+      );
+    }
+    
     // Visual spawn effect
     this.createSpawnEffect(x, y);
+  }
+
+  setPlatforms(platforms: Phaser.Physics.Arcade.StaticGroup) {
+    // Set platforms for all existing enemies
+    this.enemies.forEach(enemy => {
+      enemy.setPlatforms(platforms);
+    });
   }
 
   private createSpawnEffect(x: number, y: number) {

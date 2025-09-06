@@ -6,16 +6,17 @@ import { GameConfig } from '../config/GameConfig';
 export default class PlatformSystem {
   private scene: MainGameScene;
   private platforms: Phaser.Physics.Arcade.StaticGroup;
-  private movingPlatforms: Phaser.Physics.Arcade.Group; // New group for dynamic platforms
   private platformData: Platform[] = [];
   private answerTexts: Phaser.GameObjects.Text[] = [];
   private questionText?: Phaser.GameObjects.Text;
   private questionBackground?: Phaser.GameObjects.Rectangle;
+  private platformCounter: number = 0;
+  private enemyPatrolPlatforms: Set<number> = new Set();
+  private patrollingEnemies: Map<number, any> = new Map();
 
   constructor(scene: MainGameScene) {
     this.scene = scene;
     this.platforms = scene.physics.add.staticGroup();
-    this.movingPlatforms = scene.physics.add.group(); // Initialize the new group
     this.setupCollisions();
   }
 
@@ -26,7 +27,6 @@ export default class PlatformSystem {
   setupPlayerCollision(playerSprite: Phaser.Physics.Arcade.Sprite) {
     // Set up basic collision first (this makes player bounce off platforms)
     this.scene.physics.add.collider(playerSprite, this.platforms);
-    this.scene.physics.add.collider(playerSprite, this.movingPlatforms); // New collider for moving platforms
     
     // Set up overlap detection for answer handling
     this.scene.physics.add.overlap(playerSprite, this.platforms, (player, platform) => {
@@ -44,6 +44,9 @@ export default class PlatformSystem {
     this.clearQuestion();
     
     this.createQuestionDisplay(question);
+    
+    // Increment platform counter and check for patrol platforms
+    this.platformCounter++;
     
     const platformWidth = 150;
     const platformHeight = 40;
@@ -99,6 +102,25 @@ export default class PlatformSystem {
       this.answerTexts.push(answerText);
       
       platform.setData('platformInfo', platformInfo);
+      
+      // Check if this should be a patrol platform (every 15th)
+      if (this.platformCounter % 15 === 0 && !this.enemyPatrolPlatforms.has(this.platformCounter)) {
+        this.enemyPatrolPlatforms.add(this.platformCounter);
+        this.spawnPatrollingEnemy(x, y, platformWidth);
+        
+        // Add visual indicator for patrol platforms
+        const patrolIndicator = this.scene.add.circle(x + platformWidth/2, y - 20, 8, 0xff4444);
+        patrolIndicator.setAlpha(0.7);
+        this.scene.tweens.add({
+          targets: patrolIndicator,
+          scaleX: 1.2,
+          scaleY: 1.2,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
       
       // Animate platform appearance
       this.scene.tweens.add({
@@ -270,7 +292,6 @@ export default class PlatformSystem {
 
   private clearPlatforms() {
     this.platforms.clear(true, true);
-    this.movingPlatforms.clear(true, true); // Clear moving platforms as well
     this.platformData = [];
     
     this.answerTexts.forEach(text => text.destroy());
@@ -306,16 +327,7 @@ export default class PlatformSystem {
       }
     });
 
-    // Update moving platforms
-    this.movingPlatforms.children.entries.forEach(platform => {
-      const sprite = platform as Phaser.Physics.Arcade.Sprite;
-      const moveData = sprite.getData('moveData');
-      if (moveData) {
-        // Calculate smooth oscillation
-        const t = Math.sin(this.scene.time.now * moveData.speed) * 0.5 + 0.5;
-        sprite.x = Phaser.Math.Linear(moveData.startX, moveData.endX, t);
-      }
-    });
+    // Moving platforms removed
   }
 
   getPlatforms() {
@@ -397,28 +409,15 @@ export default class PlatformSystem {
     });
   }
   
-  // Refactored to handle both static and moving platforms
   private createPlatform(x: number, y: number, width: number, height: number, texture: string) {
-    let platform;
-    const isMoving = texture === 'platform-moving';
-
-    if (isMoving) {
-        platform = this.scene.physics.add.sprite(x, y, texture);
-        this.movingPlatforms.add(platform);
-        platform.body?.setAllowGravity(false);
-        platform.body?.setImmovable(true);
-        platform.body?.setSize(width, height);
-        this.setupMovingPlatform(platform);
-    } else {
-        platform = this.scene.physics.add.staticSprite(x, y, texture);
-        this.platforms.add(platform);
-        platform.body?.setSize(width, height);
-    }
+    const platform = this.scene.physics.add.staticSprite(x, y, texture);
+    this.platforms.add(platform);
+    platform.body?.setSize(width, height);
 
     platform.setOrigin(0, 0);
-    platform.setScale(width / 150, height / 40); // Scale based on original texture size
-    platform.refreshBody();
-    platform.body?.setOffset(0, 0);
+platform.setScale(width / 150, height / 40);
+platform.body?.setSize(150, 40); // Match original texture size
+platform.refreshBody(); // now physics body matches scaled sprite
     
     // Setup special platform behaviors
     if (texture === 'platform-breaking') {
@@ -601,26 +600,16 @@ const MIN_VERTICAL_SPACING = 40;   // pixels
         sprite.destroy();
       }
     });
-
-    this.movingPlatforms.children.entries.forEach(platform => {
-        const sprite = platform as Phaser.Physics.Arcade.Sprite;
-        if (sprite.y > playerY + maxDistance) {
-            this.movingPlatforms.remove(sprite);
-            sprite.destroy();
-        }
-    });
   }
 
   getRandomPlatformType(): string {
     const random = Math.random();
-    if (random < 0.6) {
-      return 'platform-neutral'; // 60% chance for normal platforms
-    } else if (random < 0.75) {
+    if (random < 0.7) {
+      return 'platform-neutral'; // 70% chance for normal platforms
+    } else if (random < 0.85) {
       return 'platform-breaking'; // 15% chance for breaking platforms
-    } else if (random < 0.9) {
-      return 'platform-trampoline'; // 15% chance for trampolines
     } else {
-      return 'platform-moving'; // 10% chance for moving platforms
+      return 'platform-trampoline'; // 15% chance for trampolines
     }
   }
 
@@ -673,20 +662,7 @@ const MIN_VERTICAL_SPACING = 40;   // pixels
     });
   }
 
-  private setupMovingPlatform(platform: Phaser.Physics.Arcade.Sprite) {
-    const minRange = 100;
-    const maxRange = 250;
-    const moveRange = Phaser.Math.Between(minRange, maxRange);
-    const startX = platform.x;
-    const endX = startX + (Math.random() > 0.5 ? moveRange : -moveRange);
-    
-    // Store movement data
-    platform.setData('moveData', {
-      startX: startX,
-      endX: endX,
-      speed: Phaser.Math.FloatBetween(0.0005, 0.0015)
-    });
-  }
+  // Moving platform setup removed
 
   private createBreakingParticles(x: number, y: number) {
     // Create debris particles
@@ -709,10 +685,24 @@ const MIN_VERTICAL_SPACING = 40;   // pixels
     }
   }
 
+  private spawnPatrollingEnemy(platformX: number, platformY: number, platformWidth: number) {
+    // Emit event to main game scene to spawn patrolling enemy
+    this.scene.events.emit('spawn-patrol-enemy', {
+      x: platformX + platformWidth / 2,
+      y: platformY - 50,
+      platformX: platformX,
+      platformWidth: platformWidth,
+      patrolId: this.platformCounter
+    });
+  }
+
+  getPatrolPlatforms() {
+    return this.enemyPatrolPlatforms;
+  }
+
   destroy() {
     this.clearPlatforms();
     this.clearQuestion();
     this.platforms.destroy();
-    this.movingPlatforms.destroy();
   }
 }

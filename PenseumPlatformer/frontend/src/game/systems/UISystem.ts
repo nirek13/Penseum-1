@@ -7,6 +7,17 @@ interface FloatingText {
   maxTimer: number;
 }
 
+// Theme colors for easy management
+const THEME = {
+  BACKGROUND: 0xffffff, // White primary background
+  HIGHLIGHT: 0x7C3AED,  // Purple highlight: rgb(124, 58, 237)
+  TEXT_LABEL: '#5A5A5A', // A dark gray for labels for readability on white
+  TEXT_VALUE: '#333333', // A near-black for default values
+  SUCCESS: '#2ecc71',
+  WARNING: '#f39c12',
+  DANGER: '#e74c3c'
+};
+
 export default class UISystem {
   private scene: MainGameScene;
   private scoreText?: Phaser.GameObjects.Text;
@@ -18,6 +29,7 @@ export default class UISystem {
   private floatingTexts: FloatingText[] = [];
   private livesHearts: Phaser.GameObjects.Sprite[] = [];
   private uiBackground?: Phaser.GameObjects.Rectangle;
+  private uiBottomBorder?: Phaser.GameObjects.Rectangle;
   private currentQuestion?: Phaser.GameObjects.Text;
   private currentQuestionBg?: Phaser.GameObjects.Rectangle;
   private answerButtons: Phaser.GameObjects.Container[] = [];
@@ -42,45 +54,57 @@ export default class UISystem {
     this.uiBackground = this.scene.add.rectangle(
       0, 0,
       this.scene.cameras.main.width,
-      100,
-      0x2c3e50,
-      0.8
+      70, // Adjusted height
+      THEME.BACKGROUND,
+      1.0
     );
     this.uiBackground.setOrigin(0, 0);
     this.uiBackground.setDepth(1000);
+    this.uiBackground.setScrollFactor(0); // Pins the UI to the camera
+
+    this.uiBottomBorder = this.scene.add.rectangle(
+        0, 69, this.scene.cameras.main.width, 1, 0xE5E7EB, 1
+    );
+    this.uiBottomBorder.setOrigin(0, 0);
+    this.uiBottomBorder.setDepth(1001);
+    this.uiBottomBorder.setScrollFactor(0);
   }
 
   private createScoreDisplay() {
     const scoreLabel = this.scene.add.text(20, 15, 'SCORE', {
       fontSize: '12px',
-      color: '#ecf0f1',
+      color: THEME.TEXT_LABEL,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     scoreLabel.setDepth(1001);
+    scoreLabel.setScrollFactor(0);
 
     this.scoreText = this.scene.add.text(20, 30, '0', {
       fontSize: '24px',
-      color: '#f39c12',
+      color: THEME.TEXT_VALUE,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     this.scoreText.setDepth(1001);
+    this.scoreText.setScrollFactor(0);
   }
 
   private createLivesDisplay() {
     const livesLabel = this.scene.add.text(150, 15, 'LIVES', {
       fontSize: '12px',
-      color: '#ecf0f1',
+      color: THEME.TEXT_LABEL,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     livesLabel.setDepth(1001);
+    livesLabel.setScrollFactor(0);
 
     for (let i = 0; i < 5; i++) {
       const heart = this.scene.add.sprite(150 + i * 25, 45, 'heart');
       heart.setScale(0.8);
       heart.setDepth(1001);
+      heart.setScrollFactor(0);
       this.livesHearts.push(heart);
     }
   }
@@ -88,71 +112,78 @@ export default class UISystem {
   private createMultiplierDisplay() {
     const multiplierLabel = this.scene.add.text(300, 15, 'MULTIPLIER', {
       fontSize: '12px',
-      color: '#ecf0f1',
+      color: THEME.TEXT_LABEL,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     multiplierLabel.setDepth(1001);
+    multiplierLabel.setScrollFactor(0);
 
     this.multiplierText = this.scene.add.text(300, 30, '1x', {
       fontSize: '20px',
-      color: '#2ecc71',
+      color: THEME.TEXT_VALUE,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     this.multiplierText.setDepth(1001);
+    this.multiplierText.setScrollFactor(0);
   }
 
   private createQuestionCounter() {
     const counterLabel = this.scene.add.text(420, 15, 'QUESTIONS', {
       fontSize: '12px',
-      color: '#ecf0f1',
+      color: THEME.TEXT_LABEL,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     counterLabel.setDepth(1001);
+    counterLabel.setScrollFactor(0);
 
     this.questionCounterText = this.scene.add.text(420, 30, '0/0', {
       fontSize: '16px',
-      color: '#3498db',
+      color: THEME.TEXT_VALUE,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     this.questionCounterText.setDepth(1001);
+    this.questionCounterText.setScrollFactor(0);
   }
 
   private createAccuracyDisplay() {
     const accuracyLabel = this.scene.add.text(550, 15, 'ACCURACY', {
       fontSize: '12px',
-      color: '#ecf0f1',
+      color: THEME.TEXT_LABEL,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     accuracyLabel.setDepth(1001);
+    accuracyLabel.setScrollFactor(0);
 
     this.accuracyText = this.scene.add.text(550, 30, '0%', {
       fontSize: '16px',
-      color: '#9b59b6',
+      color: THEME.TEXT_VALUE,
       fontFamily: 'Arial',
       fontStyle: 'bold'
     });
     this.accuracyText.setDepth(1001);
+    this.accuracyText.setScrollFactor(0);
   }
 
   private createPowerUpIndicators() {
     for (let i = 0; i < 5; i++) {
       const container = this.scene.add.container(
         this.scene.cameras.main.width - 200 + i * 35,
-        25
+        35
       );
       
-      const background = this.scene.add.circle(0, 0, 15, 0x34495e, 0.8);
+      const background = this.scene.add.circle(0, 0, 15, 0xE5E7EB, 0.8);
       const border = this.scene.add.circle(0, 0, 15);
-      border.setStrokeStyle(2, 0x7f8c8d);
+      border.setStrokeStyle(2, 0xD1D5DB);
       
       container.add([background, border]);
       container.setDepth(1001);
       container.setAlpha(0.3);
+      container.setScrollFactor(0);
       
       this.powerUpIndicators.push(container);
     }
@@ -170,7 +201,7 @@ export default class UISystem {
 
   private updateScore(score: number) {
     if (this.scoreText) {
-      const currentScore = parseInt(this.scoreText.text);
+      const currentScore = parseInt(this.scoreText.text.replace(/,/g, ''));
       if (currentScore !== score) {
         this.animateScoreChange(currentScore, score);
       }
@@ -179,6 +210,8 @@ export default class UISystem {
 
   private animateScoreChange(from: number, to: number) {
     if (!this.scoreText) return;
+
+    this.scoreText.setColor(Phaser.Display.Color.RGBToString(124, 58, 237));
     
     this.scene.tweens.add({
       targets: { value: from },
@@ -196,7 +229,10 @@ export default class UISystem {
           scaleY: 1.2,
           duration: 100,
           yoyo: true,
-          ease: 'Back.easeOut'
+          ease: 'Back.easeOut',
+          onComplete: () => {
+              this.scoreText?.setColor(THEME.TEXT_VALUE);
+          }
         });
       }
     });
@@ -206,10 +242,10 @@ export default class UISystem {
     this.livesHearts.forEach((heart, index) => {
       if (index < lives) {
         heart.setAlpha(1);
-        heart.setTint(0xffffff);
+        heart.setTint(THEME.HIGHLIGHT);
       } else {
         heart.setAlpha(0.3);
-        heart.setTint(0x7f8c8d);
+        heart.setTint(0xcccccc);
       }
     });
   }
@@ -219,18 +255,21 @@ export default class UISystem {
       this.multiplierText.setText(`${multiplier}x`);
       
       if (multiplier > 1) {
-        this.multiplierText.setColor('#f39c12');
-        this.scene.tweens.add({
-          targets: this.multiplierText,
-          scaleX: 1.1,
-          scaleY: 1.1,
-          duration: 200,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
+        this.multiplierText.setColor(Phaser.Display.Color.RGBToString(124, 58, 237));
+        
+        if (!this.scene.tweens.isTweening(this.multiplierText)) {
+            this.scene.tweens.add({
+              targets: this.multiplierText,
+              scaleX: 1.2,
+              scaleY: 1.2,
+              duration: 200,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            });
+        }
       } else {
-        this.multiplierText.setColor('#2ecc71');
+        this.multiplierText.setColor(THEME.TEXT_VALUE);
         this.scene.tweens.killTweensOf(this.multiplierText);
         this.multiplierText.setScale(1);
       }
@@ -244,17 +283,22 @@ export default class UISystem {
   }
 
   private updateAccuracy(answered: number, correct: number) {
-    if (this.accuracyText && answered > 0) {
-      const accuracy = Math.round((correct / answered) * 100);
-      this.accuracyText.setText(`${accuracy}%`);
-      
-      if (accuracy >= 80) {
-        this.accuracyText.setColor('#2ecc71');
-      } else if (accuracy >= 60) {
-        this.accuracyText.setColor('#f39c12');
-      } else {
-        this.accuracyText.setColor('#e74c3c');
-      }
+    if (this.accuracyText) {
+        if (answered > 0) {
+            const accuracy = Math.round((correct / answered) * 100);
+            this.accuracyText.setText(`${accuracy}%`);
+            
+            if (accuracy >= 80) {
+              this.accuracyText.setColor(THEME.SUCCESS);
+            } else if (accuracy >= 60) {
+              this.accuracyText.setColor(THEME.WARNING);
+            } else {
+              this.accuracyText.setColor(THEME.DANGER);
+            }
+        } else {
+            this.accuracyText.setText('0%');
+            this.accuracyText.setColor(THEME.TEXT_VALUE);
+        }
     }
   }
 
@@ -262,7 +306,7 @@ export default class UISystem {
     const powerUps = [
       { active: gameStats.hasShield, color: 0x4ecdc4, emoji: '🛡️' },
       { active: gameStats.isInvincible, color: 0xffd93d, emoji: '⭐' },
-      { active: gameStats.multiplier > 1, color: 0x6bcf7f, emoji: '💎' },
+      { active: gameStats.multiplier > 1, color: THEME.HIGHLIGHT, emoji: '💎' },
       { active: false, color: 0xff6b6b, emoji: '🚀' },
       { active: false, color: 0xff69b4, emoji: '❤️' }
     ];
@@ -273,8 +317,8 @@ export default class UISystem {
         
         if (powerUp.active) {
           container.setAlpha(1);
-          const background = container.list[0] as any;
-          background.setFillStyle(powerUp.color, 0.8);
+          const background = container.list[0] as Phaser.GameObjects.Shape;
+          background.setFillStyle(powerUp.color, 1);
           
           if (!container.getData('hasEmoji')) {
             const emojiText = this.scene.add.text(0, 0, powerUp.emoji, {
@@ -287,8 +331,8 @@ export default class UISystem {
           }
         } else {
           container.setAlpha(0.3);
-          const background = container.list[0] as any;
-          background.setFillStyle(0x34495e, 0.8);
+          const background = container.list[0] as Phaser.GameObjects.Shape;
+          background.setFillStyle(0xE5E7EB, 0.8);
           
           if (container.getData('hasEmoji')) {
             const emoji = container.list[2];
@@ -414,6 +458,7 @@ export default class UISystem {
       this.questionCounterText,
       this.accuracyText,
       this.uiBackground,
+      this.uiBottomBorder,
       ...this.livesHearts,
       ...this.powerUpIndicators
     ];
@@ -434,6 +479,7 @@ export default class UISystem {
       this.questionCounterText,
       this.accuracyText,
       this.uiBackground,
+      this.uiBottomBorder,
       ...this.livesHearts,
       ...this.powerUpIndicators
     ];
@@ -447,20 +493,14 @@ export default class UISystem {
   }
 
   showQuestion(question: any) {
-    console.log('UISystem.showQuestion called with:', question);
     this.clearQuestion();
     this.currentQuestionData = question;
     
     const screenWidth = this.scene.cameras.main.width;
     const padding = 40;
     
-    // Get camera position for UI positioning
-    const camera = this.scene.cameras.main;
     const questionY = 120; // Fixed position at top of screen
     
-    console.log('Creating question UI at Y:', questionY);
-    
-    // Create modern question background with Penseum styling
     this.currentQuestionBg = this.scene.add.rectangle(
       screenWidth / 2,
       questionY,
@@ -469,12 +509,10 @@ export default class UISystem {
       0xFFFFFF,
       1.0
     );
-    // Clean shadow effect
     this.currentQuestionBg.setStrokeStyle(1, 0xE5E7EB, 1);
     this.currentQuestionBg.setDepth(2000);
-    this.currentQuestionBg.setScrollFactor(0); // Make it stick to camera
+    this.currentQuestionBg.setScrollFactor(0);
     
-    // Add drop shadow effect by creating a slightly offset background
     const shadowBg = this.scene.add.rectangle(
       screenWidth / 2 + 2,
       questionY + 2,
@@ -486,7 +524,6 @@ export default class UISystem {
     shadowBg.setDepth(1999);
     shadowBg.setScrollFactor(0);
     
-    // Create question text with modern Penseum typography
     this.currentQuestion = this.scene.add.text(
       screenWidth / 2,
       questionY,
@@ -503,13 +540,12 @@ export default class UISystem {
     );
     this.currentQuestion.setOrigin(0.5);
     this.currentQuestion.setDepth(2001);
-    this.currentQuestion.setScrollFactor(0); // Make it stick to camera
+    this.currentQuestion.setScrollFactor(0);
     
-    // Create modern answer buttons with Penseum styling
     const buttonWidth = (screenWidth - padding * 4) / 2;
     const buttonHeight = 70;
     const startX = padding * 2 + buttonWidth / 2;
-    const startY = questionY + 100; // Position buttons below question
+    const startY = questionY + 100;
     
     question.answers.forEach((answer: string, index: number) => {
       const row = Math.floor(index / 2);
@@ -521,19 +557,17 @@ export default class UISystem {
       
       const isCorrect = answer === question.correct;
       
-      // Penseum-style button design
-      const bgColor = 0xFFFFFF; // White background for all buttons
-      const borderColor = isCorrect ? 0x7C3AED : 0x000000; // Purple for correct, black for incorrect
+      const bgColor = 0xFFFFFF;
+      const borderColor = isCorrect ? THEME.HIGHLIGHT : 0x000000;
       
       const buttonBg = this.scene.add.rectangle(0, 0, buttonWidth, buttonHeight, bgColor, 1);
-      buttonBg.setStrokeStyle(3, borderColor, 1); // Strong border
+      buttonBg.setStrokeStyle(3, borderColor, 1);
       
-      // Add subtle shadow
       const buttonShadow = this.scene.add.rectangle(2, 2, buttonWidth, buttonHeight, 0x000000, 0.1);
       
       const buttonText = this.scene.add.text(0, 0, answer, {
         fontSize: '18px',
-        color: isCorrect ? '#7C3AED' : '#000000', // Purple text for correct, black for incorrect
+        color: isCorrect ? Phaser.Display.Color.RGBToString(124, 58, 237) : '#000000',
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
         fontStyle: 'bold',
         align: 'center',
@@ -543,14 +577,12 @@ export default class UISystem {
       
       container.add([buttonShadow, buttonBg, buttonText]);
       container.setDepth(2000);
-      container.setScrollFactor(0); // Make buttons stick to camera
+      container.setScrollFactor(0);
       container.setInteractive(new Phaser.Geom.Rectangle(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight), Phaser.Geom.Rectangle.Contains);
       
-      // Modern hover effects with Penseum styling
       container.on('pointerover', () => {
-        // Change to filled background on hover
-        buttonBg.setFillStyle(isCorrect ? 0x7C3AED : 0x000000);
-        buttonText.setColor('#FFFFFF'); // White text on colored background
+        buttonBg.setFillStyle(isCorrect ? THEME.HIGHLIGHT : 0x000000);
+        buttonText.setColor('#FFFFFF');
         this.scene.tweens.add({
           targets: container,
           scaleX: 1.02,
@@ -561,9 +593,8 @@ export default class UISystem {
       });
       
       container.on('pointerout', () => {
-        // Return to white background with colored border/text
         buttonBg.setFillStyle(0xFFFFFF);
-        buttonText.setColor(isCorrect ? '#7C3AED' : '#000000');
+        buttonText.setColor(isCorrect ? Phaser.Display.Color.RGBToString(124, 58, 237) : '#000000');
         this.scene.tweens.add({
           targets: container,
           scaleX: 1,
@@ -573,7 +604,6 @@ export default class UISystem {
         });
       });
       
-      // Handle answer selection
       container.on('pointerdown', () => {
         this.selectAnswer(answer, isCorrect, question);
       });
@@ -581,10 +611,9 @@ export default class UISystem {
       this.answerButtons.push(container);
     });
     
-    // Show difficulty and points
     const difficultyText = this.scene.add.text(
       screenWidth - 20,
-      60,
+      questionY - 80,
       `${question.difficulty.toUpperCase()} • ${question.points} pts`,
       {
         fontSize: '16px',
@@ -595,36 +624,37 @@ export default class UISystem {
     );
     difficultyText.setOrigin(1, 0.5);
     difficultyText.setDepth(2001);
+    difficultyText.setScrollFactor(0);
     
-    // Animate everything in
-    const elements = [this.currentQuestionBg, this.currentQuestion, difficultyText, ...this.answerButtons];
-    elements.forEach(el => {
+    const elements = [this.currentQuestionBg, shadowBg, this.currentQuestion, difficultyText, ...this.answerButtons];
+    elements.forEach((el, index) => {
+      const initialY = el.y;
+      el.y = initialY - 30;
       el.setAlpha(0);
       this.scene.tweens.add({
         targets: el,
         alpha: 1,
-        y: el.y + 20,
-        duration: 600,
-        ease: 'Back.easeOut'
+        y: initialY,
+        duration: 500,
+        delay: index * 50,
+        ease: 'Power2.easeOut'
       });
     });
   }
 
   private selectAnswer(answer: string, isCorrect: boolean, question: any) {
-    // Disable all buttons
     this.answerButtons.forEach(button => {
       button.removeInteractive();
     });
     
     if (isCorrect) {
       this.showFloatingText('CORRECT! +' + question.points, this.scene.cameras.main.width / 2, 300, '#27ae60', '32px');
-      this.scene.cameras.main.flash(200, 0, 255, 0, false);
+      this.scene.cameras.main.flash(200, 46, 204, 113, false); // Flash purple
     } else {
       this.showFloatingText('WRONG! -1 Life', this.scene.cameras.main.width / 2, 300, '#e74c3c', '32px');
       this.scene.cameras.main.shake(300, 0.02);
     }
     
-    // Emit event to game scene
     this.scene.events.emit('question-answered', { 
       answer, 
       isCorrect, 
@@ -632,28 +662,34 @@ export default class UISystem {
       points: question.points 
     });
     
-    // Clear question after delay
     this.scene.time.delayedCall(2000, () => {
       this.clearQuestion();
     });
   }
 
   clearQuestion() {
-    if (this.currentQuestion) {
-      this.currentQuestion.destroy();
-      this.currentQuestion = undefined;
-    }
+    // Animate out before destroying
+    const elements = [this.currentQuestionBg, this.currentQuestion, ...this.answerButtons].filter(el => el);
     
-    if (this.currentQuestionBg) {
-      this.currentQuestionBg.destroy();
-      this.currentQuestionBg = undefined;
-    }
-    
-    this.answerButtons.forEach(button => {
-      button.destroy();
+    elements.forEach((el, index) => {
+        if (el && this.scene) {
+            this.scene.tweens.add({
+                targets: el,
+                alpha: 0,
+                y: el.y + 30,
+                duration: 300,
+                delay: index * 30,
+                ease: 'Power2.easeIn',
+                onComplete: () => {
+                    el.destroy();
+                }
+            });
+        }
     });
+
+    this.currentQuestion = undefined;
+    this.currentQuestionBg = undefined;
     this.answerButtons = [];
-    
     this.currentQuestionData = null;
   }
 
