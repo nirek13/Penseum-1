@@ -1,0 +1,202 @@
+[
+  {
+    "id": 1,
+    "question": "When did World War II end?",
+    "answers": ["1945", "1944", "1946", "1943"],
+    "correct": "1945",
+    "difficulty": "easy",
+    "subject": "History",
+    "explanation": "World War II ended in 1945 with the surrender of Japan in September.",
+    "points": 100
+  },
+  {
+    "id": 2,
+    "question": "What is the heaviest naturally occurring element?",
+    "answers": ["Uranium", "Lead", "Plutonium", "Osmium"],
+    "correct": "Uranium",
+    "difficulty": "hard",
+    "subject": "Chemistry",
+    "explanation": "Uranium is the heaviest naturally occurring element with atomic number 92.",
+    "points": 200
+  },
+  {
+    "id": 3,
+    "question": "Which planet is closest to the Sun?",
+    "answers": ["Venus", "Mercury", "Mars", "Earth"],
+    "correct": "Mercury",
+    "difficulty": "easy",
+    "subject": "Science",
+    "explanation": "Mercury is the smallest planet and closest to the Sun in our solar system.",
+    "points": 100
+  },
+  {
+    "id": 4,
+    "question": "What is the capital of Australia?",
+    "answers": ["Sydney", "Melbourne", "Canberra", "Perth"],
+    "correct": "Canberra",
+    "difficulty": "medium",
+    "subject": "Geography",
+    "explanation": "Canberra is the capital city of Australia, located in the Australian Capital Territory.",
+    "points": 150
+  },
+  {
+    "id": 5,
+    "question": "In mathematics, what is the value of π (pi) rounded to two decimal places?",
+    "answers": ["3.14", "3.16", "3.12", "3.18"],
+    "correct": "3.14",
+    "difficulty": "easy",
+    "subject": "Mathematics",
+    "explanation": "Pi (π) is approximately 3.14159, which rounds to 3.14 when rounded to two decimal places.",
+    "points": 100
+  },
+  {
+    "id": 6,
+    "question": "Who wrote the novel '1984'?",
+    "answers": ["Aldous Huxley", "George Orwell", "Ray Bradbury", "Kurt Vonnegut"],
+    "correct": "George Orwell",
+    "difficulty": "medium",
+    "subject": "Literature",
+    "explanation": "George Orwell wrote the dystopian novel '1984', published in 1949.",
+    "points": 150
+  },
+  {
+    "id": 7,
+    "question": "What is the chemical symbol for gold?",
+    "answers": ["Go", "Gd", "Au", "Ag"],
+    "correct": "Au",
+    "difficulty": "medium",
+    "subject": "Chemistry",
+    "explanation": "Gold's chemical symbol is Au, derived from the Latin word 'aurum'.",
+    "points": 150
+  },
+  {
+    "id": 8,
+    "question": "Which programming language was created by Brendan Eich?",
+    "answers": ["Python", "JavaScript", "Java", "C++"],
+    "correct": "JavaScript",
+    "difficulty": "hard",
+    "subject": "Computer Science",
+    "explanation": "Brendan Eich created JavaScript in 1995 while working at Netscape.",
+    "points": 200
+  },
+  {
+    "id": 9,
+    "question": "What is the largest mammal in the world?",
+    "answers": ["African Elephant", "Blue Whale", "Giraffe", "Polar Bear"],
+    "correct": "Blue Whale",
+    "difficulty": "easy",
+    "subject": "Biology",
+    "explanation": "The Blue Whale is the largest mammal and largest animal ever known to have lived on Earth.",
+    "points": 100
+  },
+  {
+    "id": 10,
+    "question": "In which year was the first iPhone released?",
+    "answers": ["2006", "2007", "2008", "2009"],
+    "correct": "2007",
+    "difficulty": "medium",
+    "subject": "Technology",
+    "explanation": "The first iPhone was released by Apple on June 29, 2007.",
+    "points": 150
+  },
+  {
+    "id": 11,
+    "question": "What is the speed of light in a vacuum?",
+    "answers": ["299,792,458 m/s", "300,000,000 m/s", "299,000,000 m/s", "298,792,458 m/s"],
+    "correct": "299,792,458 m/s",
+    "difficulty": "hard",
+    "subject": "Physics",
+    "explanation": "The speed of light in a vacuum is exactly 299,792,458 meters per second.",
+    "points": 200
+  },
+  {
+    "id": 12,
+    "question": "Which is the longest river in the world?",
+    "answers": ["Amazon River", "Nile River", "Mississippi River", "Yangtze River"],
+    "correct": "Nile River",
+    "difficulty": "easy",
+    "subject": "Geography",
+    "explanation": "The Nile River in Africa is traditionally considered the longest river in the world.",
+    "points": 100
+  },
+  {
+    "id": 13,
+    "question": "What does 'HTTP' stand for?",
+    "answers": ["HyperText Transfer Protocol", "High Tech Transfer Protocol", "HyperText Transport Protocol", "High Transfer Text Protocol"],
+    "correct": "HyperText Transfer Protocol",
+    "difficulty": "medium",
+    "subject": "Computer Science",
+    "explanation": "HTTP stands for HyperText Transfer Protocol, used for transferring web pages.",
+    "points": 150
+  },
+  {
+    "id": 14,
+    "question": "In which organ of the human body is insulin produced?",
+    "answers": ["Liver", "Kidney", "Pancreas", "Stomach"],
+    "correct": "Pancreas",
+    "difficulty": "medium",
+    "subject": "Biology",
+    "explanation": "Insulin is produced by the beta cells in the pancreas to regulate blood sugar levels.",
+    "points": 150
+  },
+  {
+    "id": 15,
+    "question": "What is the smallest prime number?",
+    "answers": ["0", "1", "2", "3"],
+    "correct": "2",
+    "difficulty": "easy",
+    "subject": "Mathematics",
+    "explanation": "2 is the smallest prime number and the only even prime number.",
+    "points": 100
+  },
+  {
+    "id": 16,
+    "question": "Which artist painted 'The Starry Night'?",
+    "answers": ["Pablo Picasso", "Vincent van Gogh", "Claude Monet", "Leonardo da Vinci"],
+    "correct": "Vincent van Gogh",
+    "difficulty": "medium",
+    "subject": "Art",
+    "explanation": "Vincent van Gogh painted 'The Starry Night' in 1889 while at an asylum in France.",
+    "points": 150
+  },
+  {
+    "id": 17,
+    "question": "What is the formula for calculating the area of a circle?",
+    "answers": ["πr²", "2πr", "πd", "r²π/2"],
+    "correct": "πr²",
+    "difficulty": "easy",
+    "subject": "Mathematics",
+    "explanation": "The area of a circle is calculated using the formula πr², where r is the radius.",
+    "points": 100
+  },
+  {
+    "id": 18,
+    "question": "Which gas makes up approximately 78% of Earth's atmosphere?",
+    "answers": ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"],
+    "correct": "Nitrogen",
+    "difficulty": "medium",
+    "subject": "Science",
+    "explanation": "Nitrogen makes up about 78% of Earth's atmosphere, with oxygen being about 21%.",
+    "points": 150
+  },
+  {
+    "id": 19,
+    "question": "In computer science, what does 'AI' stand for?",
+    "answers": ["Automated Intelligence", "Artificial Intelligence", "Advanced Intelligence", "Algorithmic Intelligence"],
+    "correct": "Artificial Intelligence",
+    "difficulty": "easy",
+    "subject": "Computer Science",
+    "explanation": "AI stands for Artificial Intelligence, the simulation of human intelligence in machines.",
+    "points": 100
+  },
+  {
+    "id": 20,
+    "question": "What is the hardest natural substance on Earth?",
+    "answers": ["Quartz", "Diamond", "Graphite", "Steel"],
+    "correct": "Diamond",
+    "difficulty": "easy",
+    "subject": "Science",
+    "explanation": "Diamond is the hardest naturally occurring substance, rating 10 on the Mohs scale.",
+    "points": 100
+  }
+]
