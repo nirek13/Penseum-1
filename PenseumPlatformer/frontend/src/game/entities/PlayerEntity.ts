@@ -4,8 +4,8 @@ import { GameConfig } from '../config/GameConfig';
 export default class PlayerEntity {
   private scene: Phaser.Scene;
   private sprite: Phaser.Physics.Arcade.Sprite;
-  private hasShield: boolean = false;
-  private isInvincible: boolean = false;
+  private hasShield: boolean = true;
+  private isInvincible: boolean = true;
   private hasDoubleBoost: boolean = false;
   private doubleBoostTimer: number = 0;
   private invincibilityTimer: number = 0;
@@ -791,6 +791,14 @@ export default class PlayerEntity {
 
   getDamageCooldown() {
     return this.damageCooldown;
+  }
+
+  get x(): number {
+    return this.sprite.x;
+  }
+
+  get y(): number {
+    return this.sprite.y;
   }
 
   destroy() {

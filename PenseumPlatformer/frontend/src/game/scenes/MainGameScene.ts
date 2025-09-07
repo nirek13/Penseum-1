@@ -8,6 +8,8 @@ import UISystem from '../systems/UISystem';
 import EnemySystem from '../systems/EnemySystem';
 import ProjectileSystem, { ProjectileConfig } from '../systems/ProjectileSystem';
 import FallingObjectsSystem from '../systems/FallingObjectsSystem';
+import ScreenEffectsSystem from '../systems/ScreenEffectsSystem';
+import EnvironmentSystem from '../systems/EnvironmentSystem';
 import { GameConfig } from '../config/GameConfig';
 
 interface SceneData {
@@ -25,6 +27,8 @@ export default class MainGameScene extends Phaser.Scene {
   private enemySystem!: EnemySystem;
   private projectileSystem!: ProjectileSystem;
   private fallingObjectsSystem!: FallingObjectsSystem;
+  private screenEffectsSystem!: ScreenEffectsSystem;
+  private environmentSystem!: EnvironmentSystem;
 
   private questions: Question[] = [];
   private currentQuestionIndex = 0;
@@ -56,7 +60,7 @@ export default class MainGameScene extends Phaser.Scene {
   private questionHeightTracker = {
     lastQuestionHeight: 0,        // Y position where last question was triggered
     nextQuestionTriggerHeight: 0, // Y position to trigger next question
-    heightPerQuestion: 2000,      // Estimated height climbed in ~45 seconds
+    heightPerQuestion: 200,      // Estimated height climbed in ~45 seconds
     hasActiveQuestion: false      // Whether a question UI is currently shown
   };
 
@@ -103,6 +107,8 @@ export default class MainGameScene extends Phaser.Scene {
     this.enemySystem = new EnemySystem(this);
     this.projectileSystem = new ProjectileSystem(this);
     this.fallingObjectsSystem = new FallingObjectsSystem(this);
+    this.screenEffectsSystem = new ScreenEffectsSystem(this);
+    this.environmentSystem = new EnvironmentSystem(this);
 
     this.setupPhysics();
     this.setupCamera();
@@ -196,132 +202,523 @@ export default class MainGameScene extends Phaser.Scene {
   }
 
   private createPlayerSprites() {
-    // Simple purple player using rgb(111, 71, 235)
+    // Enhanced player sprite with gradient and depth
     const playerGraphics = this.add.graphics();
-    playerGraphics.fillStyle(0x6F47EB);
+    
+    // Shadow
+    playerGraphics.fillStyle(0x000000, 0.3);
+    playerGraphics.fillRoundedRect(2, 2, 32, 32, 8);
+    
+    // Base gradient (simulate with layers)
+    playerGraphics.fillStyle(0x4C1D95); // Darker purple base
     playerGraphics.fillRoundedRect(0, 0, 32, 32, 8);
-    playerGraphics.lineStyle(2, 0xFFFFFF, 1);
+    
+    playerGraphics.fillStyle(0x6F47EB); // Main purple
+    playerGraphics.fillRoundedRect(2, 2, 28, 28, 6);
+    
+    // Highlight gradient
+    playerGraphics.fillStyle(0x8B5CF6, 0.8); // Lighter purple
+    playerGraphics.fillRoundedRect(4, 4, 24, 16, 4);
+    
+    playerGraphics.fillStyle(0xA78BFA, 0.6); // Even lighter
+    playerGraphics.fillRoundedRect(6, 6, 20, 10, 3);
+    
+    // Inner glow
+    playerGraphics.fillStyle(0xFFFFFF, 0.3);
+    playerGraphics.fillRoundedRect(8, 8, 16, 8, 2);
+    
+    // Enhanced border with glow
+    playerGraphics.lineStyle(3, 0xFFFFFF, 0.9);
     playerGraphics.strokeRoundedRect(0, 0, 32, 32, 8);
-    playerGraphics.generateTexture('player', 32, 32);
+    
+    playerGraphics.lineStyle(1.5, 0xE0E7FF, 1);
+    playerGraphics.strokeRoundedRect(1, 1, 30, 30, 7);
+    
+    playerGraphics.generateTexture('player', 36, 36);
     playerGraphics.destroy();
 
-    // Player with shield - simple design with white shield
+    // Enhanced player with shield
     const playerShieldGraphics = this.add.graphics();
+    
+    // Shield glow layers
+    playerShieldGraphics.fillStyle(0x6F47EB, 0.1);
+    playerShieldGraphics.fillCircle(22, 22, 22);
+    
+    playerShieldGraphics.fillStyle(0x6F47EB, 0.2);
+    playerShieldGraphics.fillCircle(22, 22, 20);
+    
+    // Player base (same as above but centered)
+    playerShieldGraphics.fillStyle(0x000000, 0.2);
+    playerShieldGraphics.fillRoundedRect(8, 8, 28, 28, 6);
+    
+    playerShieldGraphics.fillStyle(0x4C1D95);
+    playerShieldGraphics.fillRoundedRect(6, 6, 28, 28, 6);
+    
     playerShieldGraphics.fillStyle(0x6F47EB);
-    playerShieldGraphics.fillRoundedRect(0, 0, 32, 32, 8);
-    playerShieldGraphics.lineStyle(4, 0xFFFFFF, 1);
-    playerShieldGraphics.strokeCircle(16, 16, 20);
-    playerShieldGraphics.generateTexture('player-shield', 44, 44);
+    playerShieldGraphics.fillRoundedRect(8, 8, 24, 24, 5);
+    
+    playerShieldGraphics.fillStyle(0x8B5CF6, 0.8);
+    playerShieldGraphics.fillRoundedRect(10, 10, 20, 14, 3);
+    
+    playerShieldGraphics.fillStyle(0xFFFFFF, 0.3);
+    playerShieldGraphics.fillRoundedRect(12, 12, 16, 8, 2);
+    
+    // Shield energy rings
+    playerShieldGraphics.lineStyle(4, 0xFFFFFF, 0.8);
+    playerShieldGraphics.strokeCircle(22, 22, 18);
+    
+    playerShieldGraphics.lineStyle(2, 0xE0E7FF, 0.6);
+    playerShieldGraphics.strokeCircle(22, 22, 16);
+    
+    playerShieldGraphics.lineStyle(1, 0xFFFFFF, 1);
+    playerShieldGraphics.strokeCircle(22, 22, 14);
+    
+    playerShieldGraphics.generateTexture('player-shield', 48, 48);
     playerShieldGraphics.destroy();
   }
 
   private createPlatformSprites() {
     const platformConfigs = {
-      correct: { base: 0x6F47EB, border: 0xFFFFFF },
-      incorrect: { base: 0xFFFFFF, border: 0x6F47EB },
-      neutral: { base: 0xFFFFFF, border: 0x6F47EB },
-      breaking: { base: 0xFFFFFF, border: 0x6F47EB },
-      trampoline: { base: 0x6F47EB, border: 0xFFFFFF },
-      cracked: { base: 0xFFFFFF, border: 0x6F47EB }
+      correct: { base: 0x6F47EB, secondary: 0x8B5CF6, border: 0xFFFFFF, glow: 0x6F47EB },
+      incorrect: { base: 0xF8FAFC, secondary: 0xE2E8F0, border: 0x6F47EB, glow: 0xFF6B6B },
+      neutral: { base: 0xF8FAFC, secondary: 0xE2E8F0, border: 0x6F47EB, glow: 0x6F47EB },
+      breaking: { base: 0xFEF3C7, secondary: 0xFDE68A, border: 0xF59E0B, glow: 0xF59E0B },
+      trampoline: { base: 0x6F47EB, secondary: 0x8B5CF6, border: 0xFFFFFF, glow: 0x10B981 },
+      cracked: { base: 0xFEE2E2, secondary: 0xFCACAC, border: 0xEF4444, glow: 0xEF4444 }
     };
 
     Object.entries(platformConfigs).forEach(([type, colors]) => {
       const graphics = this.add.graphics();
       
-      // Simple filled rectangle
-      graphics.fillStyle(colors.base);
+      // Shadow layer
+      graphics.fillStyle(0x000000, 0.15);
+      graphics.fillRoundedRect(3, 3, 150, 40, 8);
+      
+      // Base layer (darker)
+      const darkerColor = Phaser.Display.Color.IntegerToRGB(colors.base);
+      graphics.fillStyle(Phaser.Display.Color.GetColor32(Math.floor(darkerColor.r * 0.7), Math.floor(darkerColor.g * 0.7), Math.floor(darkerColor.b * 0.7), 255));
       graphics.fillRoundedRect(0, 0, 150, 40, 8);
       
-      // Simple border
-      graphics.lineStyle(2, colors.border, 1);
+      // Main platform surface
+      graphics.fillStyle(colors.base);
+      graphics.fillRoundedRect(2, 2, 146, 36, 6);
+      
+      // Gradient highlight
+      graphics.fillStyle(colors.secondary, 0.7);
+      graphics.fillRoundedRect(4, 4, 142, 18, 4);
+      
+      // Inner glow/highlight
+      graphics.fillStyle(0xFFFFFF, 0.3);
+      graphics.fillRoundedRect(6, 6, 138, 12, 3);
+      
+      // Special type indicators
+      if (type === 'trampoline') {
+        // Spring coils
+        for (let i = 20; i < 130; i += 25) {
+          graphics.lineStyle(3, 0xFFFFFF, 0.8);
+          graphics.strokeCircle(i, 20, 6);
+          graphics.lineStyle(1.5, colors.glow, 1);
+          graphics.strokeCircle(i, 20, 4);
+        }
+      } else if (type === 'breaking') {
+        // Crack lines
+        graphics.lineStyle(2, 0xF59E0B, 0.6);
+        graphics.moveTo(30, 8);
+        graphics.lineTo(45, 32);
+        graphics.moveTo(75, 6);
+        graphics.lineTo(90, 28);
+        graphics.moveTo(110, 10);
+        graphics.lineTo(125, 30);
+        graphics.strokePath();
+      } else if (type === 'cracked') {
+        // Deep cracks
+        graphics.lineStyle(3, 0xEF4444, 0.8);
+        graphics.moveTo(25, 4);
+        graphics.lineTo(40, 36);
+        graphics.moveTo(75, 2);
+        graphics.lineTo(95, 38);
+        graphics.moveTo(110, 6);
+        graphics.lineTo(130, 34);
+        graphics.strokePath();
+      }
+      
+      // Enhanced border with glow effect
+      graphics.lineStyle(4, colors.glow, 0.3);
+      graphics.strokeRoundedRect(-1, -1, 152, 42, 9);
+      
+      graphics.lineStyle(2, colors.border, 0.9);
       graphics.strokeRoundedRect(0, 0, 150, 40, 8);
       
-      graphics.generateTexture(`platform-${type}`, 150, 40);
+      graphics.lineStyle(1, 0xFFFFFF, 0.6);
+      graphics.strokeRoundedRect(1, 1, 148, 38, 7);
+      
+      graphics.generateTexture(`platform-${type}`, 154, 44);
       graphics.destroy();
     });
   }
 
   private createPowerUpSprites() {
     const powerUps = [
-      { key: 'shield', color: 0x6F47EB },
-      { key: 'boost', color: 0x6F47EB },
-      { key: 'invincibility', color: 0xFFFFFF },
-      { key: 'multiplier', color: 0x6F47EB },
-      { key: 'life', color: 0x6F47EB },
-      { key: 'jetpack', color: 0xFFFFFF },
-      { key: 'trampoline', color: 0x6F47EB },
-      { key: 'doubleJump', color: 0xFFFFFF }
+      { key: 'shield', colors: { base: 0x6F47EB, highlight: 0x8B5CF6, glow: 0xC4B5FD } },
+      { key: 'boost', colors: { base: 0x10B981, highlight: 0x34D399, glow: 0x6EE7B7 } },
+      { key: 'invincibility', colors: { base: 0xF59E0B, highlight: 0xFBBF24, glow: 0xFDE047 } },
+      { key: 'multiplier', colors: { base: 0xEF4444, highlight: 0xF87171, glow: 0xFCA5A5 } },
+      { key: 'life', colors: { base: 0xEC4899, highlight: 0xF472B6, glow: 0xF9A8D4 } },
+      { key: 'jetpack', colors: { base: 0x8B5A2B, highlight: 0xA16207, glow: 0xD97706 } },
+      { key: 'trampoline', colors: { base: 0x059669, highlight: 0x10B981, glow: 0x34D399 } },
+      { key: 'doubleJump', colors: { base: 0x7C3AED, highlight: 0x8B5CF6, glow: 0xA78BFA } }
     ];
 
-    powerUps.forEach(({ key, color }) => {
+    powerUps.forEach(({ key, colors }) => {
       const graphics = this.add.graphics();
-      graphics.fillStyle(color);
-      graphics.fillRoundedRect(4, 4, 24, 24, 8);
-      graphics.lineStyle(2, color === 0xFFFFFF ? 0x6F47EB : 0xFFFFFF, 1);
-      graphics.strokeRoundedRect(4, 4, 24, 24, 8);
-      graphics.generateTexture(`powerup-${key}`, 32, 32);
+      
+      // Outer glow
+      graphics.fillStyle(colors.glow, 0.4);
+      graphics.fillRoundedRect(-2, -2, 36, 36, 12);
+      
+      // Shadow
+      graphics.fillStyle(0x000000, 0.3);
+      graphics.fillRoundedRect(2, 2, 28, 28, 8);
+      
+      // Base container
+      graphics.fillStyle(colors.base);
+      graphics.fillRoundedRect(0, 0, 32, 32, 10);
+      
+      // Gradient highlight
+      graphics.fillStyle(colors.highlight, 0.8);
+      graphics.fillRoundedRect(2, 2, 28, 16, 8);
+      
+      // Inner glow
+      graphics.fillStyle(0xFFFFFF, 0.5);
+      graphics.fillRoundedRect(4, 4, 24, 10, 6);
+      
+      // Icon-specific decorations
+      graphics.fillStyle(0xFFFFFF, 0.9);
+      switch(key) {
+        case 'shield':
+          // Shield shape
+          graphics.fillEllipse(16, 12, 12, 8);
+          graphics.fillTriangle(16, 20, 10, 26, 22, 26);
+          break;
+        case 'boost':
+          // Lightning bolt
+          graphics.fillTriangle(12, 8, 16, 16, 14, 16);
+          graphics.fillTriangle(20, 16, 16, 24, 18, 16);
+          break;
+        case 'invincibility':
+          // Star shape
+          for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const x = 16 + Math.cos(angle) * 6;
+            const y = 16 + Math.sin(angle) * 6;
+            graphics.fillCircle(x, y, 2);
+          }
+          break;
+        case 'multiplier':
+          // X2 indicator
+          graphics.fillRoundedRect(8, 12, 4, 8, 1);
+          graphics.fillRoundedRect(20, 12, 4, 8, 1);
+          graphics.fillRoundedRect(12, 8, 8, 4, 1);
+          break;
+        case 'life':
+          // Heart shape
+          graphics.fillCircle(12, 14, 4);
+          graphics.fillCircle(20, 14, 4);
+          graphics.fillTriangle(16, 18, 8, 24, 24, 24);
+          break;
+        case 'jetpack':
+          // Jetpack flames
+          graphics.fillRoundedRect(10, 18, 4, 8, 2);
+          graphics.fillRoundedRect(18, 18, 4, 8, 2);
+          graphics.fillRoundedRect(14, 8, 4, 12, 2);
+          break;
+        case 'trampoline':
+          // Spring coils
+          graphics.strokeCircle(12, 16, 3);
+          graphics.strokeCircle(20, 16, 3);
+          graphics.fillRoundedRect(8, 20, 16, 4, 2);
+          break;
+        case 'doubleJump':
+          // Jump arcs
+          graphics.lineStyle(3, 0xFFFFFF, 0.9);
+          graphics.strokeEllipse(16, 16, 8, 4);
+          graphics.strokeEllipse(16, 18, 12, 6);
+          break;
+      }
+      
+      // Enhanced border
+      graphics.lineStyle(3, 0xFFFFFF, 0.8);
+      graphics.strokeRoundedRect(0, 0, 32, 32, 10);
+      
+      graphics.lineStyle(1, colors.glow, 1);
+      graphics.strokeRoundedRect(1, 1, 30, 30, 9);
+      
+      graphics.generateTexture(`powerup-${key}`, 36, 36);
       graphics.destroy();
     });
   }
 
   private createUISprites() {
-    // Simple purple heart using rgb(111, 71, 235)
+    // Enhanced heart with gradient and glow
     const heartGraphics = this.add.graphics();
-    heartGraphics.fillStyle(0x6F47EB);
+    
+    // Outer glow
+    heartGraphics.fillStyle(0xF472B6, 0.3);
+    heartGraphics.fillCircle(10, 12, 8);
+    heartGraphics.fillCircle(18, 12, 8);
+    heartGraphics.fillTriangle(14, 20, 4, 28, 24, 28);
+    
+    // Shadow
+    heartGraphics.fillStyle(0x000000, 0.2);
+    heartGraphics.fillCircle(11, 13, 6);
+    heartGraphics.fillCircle(19, 13, 6);
+    heartGraphics.fillTriangle(15, 19, 7, 26, 23, 26);
+    
+    // Base heart - deep red
+    heartGraphics.fillStyle(0xDC2626);
     heartGraphics.fillCircle(10, 12, 6);
     heartGraphics.fillCircle(18, 12, 6);
     heartGraphics.fillTriangle(14, 18, 6, 25, 22, 25);
-    heartGraphics.lineStyle(2, 0xFFFFFF, 1);
+    
+    // Gradient highlight - pink
+    heartGraphics.fillStyle(0xF472B6);
+    heartGraphics.fillCircle(10, 10, 4);
+    heartGraphics.fillCircle(18, 10, 4);
+    heartGraphics.fillTriangle(14, 15, 8, 20, 20, 20);
+    
+    // Inner highlight - light pink
+    heartGraphics.fillStyle(0xFCE7F3);
+    heartGraphics.fillCircle(10, 9, 2.5);
+    heartGraphics.fillCircle(18, 9, 2.5);
+    heartGraphics.fillTriangle(14, 13, 10, 16, 18, 16);
+    
+    // Sparkle effect
+    heartGraphics.fillStyle(0xFFFFFF, 0.9);
+    heartGraphics.fillCircle(8, 8, 1);
+    heartGraphics.fillCircle(20, 8, 1);
+    heartGraphics.fillCircle(14, 12, 1);
+    
+    // Enhanced border
+    heartGraphics.lineStyle(2.5, 0xFFFFFF, 0.9);
     heartGraphics.strokeCircle(10, 12, 6);
     heartGraphics.strokeCircle(18, 12, 6);
-    heartGraphics.generateTexture('heart', 28, 28);
+    
+    heartGraphics.lineStyle(1, 0xFDE2E7, 1);
+    heartGraphics.strokeCircle(10, 12, 5);
+    heartGraphics.strokeCircle(18, 12, 5);
+    
+    heartGraphics.generateTexture('heart', 32, 32);
     heartGraphics.destroy();
   }
 
   private createEnemySprites() {
-    // Simple shooter enemy - white triangle with purple border
+    // Enhanced shooter enemy - menacing triangle with gradients
     const shooterGraphics = this.add.graphics();
-    shooterGraphics.fillStyle(0xFFFFFF);
+    
+    // Shadow
+    shooterGraphics.fillStyle(0x000000, 0.3);
+    shooterGraphics.fillTriangle(17, 5, 5, 29, 29, 29);
+    
+    // Base - dark red/orange
+    shooterGraphics.fillStyle(0xDC2626);
     shooterGraphics.fillTriangle(16, 4, 4, 28, 28, 28);
-    shooterGraphics.lineStyle(2, 0x6F47EB, 1);
+    
+    // Gradient highlight
+    shooterGraphics.fillStyle(0xF87171, 0.8);
+    shooterGraphics.fillTriangle(16, 8, 8, 22, 24, 22);
+    
+    // Inner glow
+    shooterGraphics.fillStyle(0xFCA5A5, 0.6);
+    shooterGraphics.fillTriangle(16, 10, 10, 18, 22, 18);
+    
+    // Weapon barrel highlight
+    shooterGraphics.fillStyle(0xFFFFFF, 0.9);
+    shooterGraphics.fillRoundedRect(14, 4, 4, 8, 1);
+    
+    // Enhanced border with glow
+    shooterGraphics.lineStyle(3, 0xFF6B6B, 0.6);
+    shooterGraphics.strokeTriangle(16, 3, 3, 29, 29, 29);
+    
+    shooterGraphics.lineStyle(2, 0xFFFFFF, 0.9);
     shooterGraphics.strokeTriangle(16, 4, 4, 28, 28, 28);
-    shooterGraphics.generateTexture('enemy-shooter', 32, 32);
+    
+    shooterGraphics.generateTexture('enemy-shooter', 36, 36);
     shooterGraphics.destroy();
 
-    // Simple melee enemy - purple square with white border
+    // Enhanced melee enemy - aggressive angular design
     const meleeGraphics = this.add.graphics();
-    meleeGraphics.fillStyle(0x6F47EB);
+    
+    // Shadow
+    meleeGraphics.fillStyle(0x000000, 0.3);
+    meleeGraphics.fillRoundedRect(5, 5, 24, 24, 4);
+    
+    // Base - dark purple
+    meleeGraphics.fillStyle(0x4C1D95);
     meleeGraphics.fillRoundedRect(4, 4, 24, 24, 4);
-    meleeGraphics.lineStyle(2, 0xFFFFFF, 1);
+    
+    // Main body
+    meleeGraphics.fillStyle(0x6F47EB);
+    meleeGraphics.fillRoundedRect(6, 6, 20, 20, 3);
+    
+    // Gradient highlight
+    meleeGraphics.fillStyle(0x8B5CF6, 0.8);
+    meleeGraphics.fillRoundedRect(8, 8, 16, 10, 2);
+    
+    // Inner core glow
+    meleeGraphics.fillStyle(0xFFFFFF, 0.4);
+    meleeGraphics.fillRoundedRect(10, 10, 12, 6, 1);
+    
+    // Spikes/claws
+    meleeGraphics.fillStyle(0xFFFFFF, 0.9);
+    meleeGraphics.fillTriangle(6, 8, 2, 12, 6, 16);
+    meleeGraphics.fillTriangle(26, 8, 30, 12, 26, 16);
+    
+    // Enhanced border
+    meleeGraphics.lineStyle(3, 0x8B5CF6, 0.6);
+    meleeGraphics.strokeRoundedRect(3, 3, 26, 26, 5);
+    
+    meleeGraphics.lineStyle(2, 0xFFFFFF, 0.9);
     meleeGraphics.strokeRoundedRect(4, 4, 24, 24, 4);
-    meleeGraphics.generateTexture('enemy-melee', 32, 32);
+    
+    meleeGraphics.generateTexture('enemy-melee', 36, 36);
     meleeGraphics.destroy();
 
-    // Simple bomber enemy - white circle with purple border
+    // Enhanced bomber enemy - pulsing with energy
     const bomberGraphics = this.add.graphics();
-    bomberGraphics.fillStyle(0xFFFFFF);
+    
+    // Outer energy field
+    bomberGraphics.fillStyle(0xF59E0B, 0.3);
+    bomberGraphics.fillCircle(16, 16, 16);
+    
+    // Shadow
+    bomberGraphics.fillStyle(0x000000, 0.2);
+    bomberGraphics.fillCircle(17, 17, 12);
+    
+    // Base body - warning orange
+    bomberGraphics.fillStyle(0xD97706);
     bomberGraphics.fillCircle(16, 16, 12);
-    bomberGraphics.lineStyle(2, 0x6F47EB, 1);
+    
+    // Inner explosive core
+    bomberGraphics.fillStyle(0xF59E0B);
+    bomberGraphics.fillCircle(16, 16, 9);
+    
+    // Highlight gradient
+    bomberGraphics.fillStyle(0xFBBF24, 0.8);
+    bomberGraphics.fillCircle(16, 14, 6);
+    
+    // Core glow
+    bomberGraphics.fillStyle(0xFFFFFF, 0.6);
+    bomberGraphics.fillCircle(16, 13, 3);
+    
+    // Warning indicators
+    bomberGraphics.fillStyle(0xFF0000, 0.8);
+    bomberGraphics.fillCircle(12, 12, 2);
+    bomberGraphics.fillCircle(20, 12, 2);
+    bomberGraphics.fillCircle(12, 20, 2);
+    bomberGraphics.fillCircle(20, 20, 2);
+    
+    // Energy ring
+    bomberGraphics.lineStyle(3, 0xFDE047, 0.8);
+    bomberGraphics.strokeCircle(16, 16, 14);
+    
+    // Enhanced border
+    bomberGraphics.lineStyle(2, 0xFFFFFF, 0.9);
     bomberGraphics.strokeCircle(16, 16, 12);
-    bomberGraphics.generateTexture('enemy-bomber', 32, 32);
+    
+    bomberGraphics.generateTexture('enemy-bomber', 36, 36);
     bomberGraphics.destroy();
 
-    // Simple walker enemy - purple square with white border
+    // Enhanced walker enemy - sturdy and mechanical
     const walkerGraphics = this.add.graphics();
-    walkerGraphics.fillStyle(0x6F47EB);
+    
+    // Shadow
+    walkerGraphics.fillStyle(0x000000, 0.3);
+    walkerGraphics.fillRoundedRect(5, 5, 24, 24, 4);
+    
+    // Base body - steel blue
+    walkerGraphics.fillStyle(0x1E40AF);
     walkerGraphics.fillRoundedRect(4, 4, 24, 24, 4);
-    walkerGraphics.lineStyle(2, 0xFFFFFF, 1);
+    
+    // Main chassis
+    walkerGraphics.fillStyle(0x3B82F6);
+    walkerGraphics.fillRoundedRect(6, 6, 20, 20, 3);
+    
+    // Gradient highlight
+    walkerGraphics.fillStyle(0x60A5FA, 0.8);
+    walkerGraphics.fillRoundedRect(8, 8, 16, 10, 2);
+    
+    // Core unit
+    walkerGraphics.fillStyle(0xFFFFFF, 0.4);
+    walkerGraphics.fillRoundedRect(10, 10, 12, 6, 1);
+    
+    // Mechanical legs/treads
+    walkerGraphics.fillStyle(0x374151);
+    walkerGraphics.fillRoundedRect(2, 22, 28, 6, 2);
+    walkerGraphics.fillRoundedRect(2, 4, 28, 6, 2);
+    
+    // Leg details
+    walkerGraphics.fillStyle(0x6B7280);
+    for (let i = 6; i < 26; i += 4) {
+      walkerGraphics.fillCircle(i, 25, 1.5);
+      walkerGraphics.fillCircle(i, 7, 1.5);
+    }
+    
+    // Enhanced border
+    walkerGraphics.lineStyle(3, 0x60A5FA, 0.6);
+    walkerGraphics.strokeRoundedRect(3, 3, 26, 26, 5);
+    
+    walkerGraphics.lineStyle(2, 0xFFFFFF, 0.9);
     walkerGraphics.strokeRoundedRect(4, 4, 24, 24, 4);
-    walkerGraphics.generateTexture('enemy-walker', 32, 32);
+    
+    walkerGraphics.generateTexture('enemy-walker', 36, 36);
     walkerGraphics.destroy();
 
-    // Simple generic enemy sprite - white with purple border
+    // Enhanced generic enemy - mysterious and threatening
     const enemyGraphics = this.add.graphics();
-    enemyGraphics.fillStyle(0xFFFFFF);
+    
+    // Outer aura
+    enemyGraphics.fillStyle(0x6F47EB, 0.2);
+    enemyGraphics.fillRoundedRect(2, 2, 28, 28, 8);
+    
+    // Shadow
+    enemyGraphics.fillStyle(0x000000, 0.3);
+    enemyGraphics.fillRoundedRect(5, 5, 24, 24, 6);
+    
+    // Base body - deep purple
+    enemyGraphics.fillStyle(0x4C1D95);
     enemyGraphics.fillRoundedRect(4, 4, 24, 24, 6);
-    enemyGraphics.lineStyle(2, 0x6F47EB, 1);
+    
+    // Main surface
+    enemyGraphics.fillStyle(0x6F47EB);
+    enemyGraphics.fillRoundedRect(6, 6, 20, 20, 4);
+    
+    // Gradient highlight
+    enemyGraphics.fillStyle(0x8B5CF6, 0.7);
+    enemyGraphics.fillRoundedRect(8, 8, 16, 12, 3);
+    
+    // Inner glow
+    enemyGraphics.fillStyle(0xC4B5FD, 0.5);
+    enemyGraphics.fillRoundedRect(10, 10, 12, 8, 2);
+    
+    // Core energy
+    enemyGraphics.fillStyle(0xFFFFFF, 0.6);
+    enemyGraphics.fillRoundedRect(12, 12, 8, 4, 1);
+    
+    // Energy patterns
+    enemyGraphics.lineStyle(2, 0xC4B5FD, 0.8);
+    enemyGraphics.strokeRoundedRect(8, 8, 16, 16, 3);
+    
+    // Enhanced border with double ring
+    enemyGraphics.lineStyle(3, 0x8B5CF6, 0.5);
+    enemyGraphics.strokeRoundedRect(3, 3, 26, 26, 7);
+    
+    enemyGraphics.lineStyle(2, 0xFFFFFF, 0.9);
     enemyGraphics.strokeRoundedRect(4, 4, 24, 24, 6);
-    enemyGraphics.generateTexture('enemy', 32, 32);
+    
+    enemyGraphics.lineStyle(1, 0xE0E7FF, 1);
+    enemyGraphics.strokeRoundedRect(5, 5, 22, 22, 5);
+    
+    enemyGraphics.generateTexture('enemy', 36, 36);
     enemyGraphics.destroy();
   }
 
@@ -601,11 +998,13 @@ export default class MainGameScene extends Phaser.Scene {
     if (data.isCorrect) {
       this.gameStats.correctAnswers++;
       this.handleCorrectAnswer(data.platform);
+      // Only move to next question after correct answer
+      this.moveToNextQuestion();
     } else {
       this.handleIncorrectAnswer(data.platform);
+      // For incorrect answers, just apply penalty but keep question active
+      // The wrong platform already disappeared, player can try other answers
     }
-
-    this.moveToNextQuestion();
   }
 
   private handleCorrectAnswer(platform: Platform) {
@@ -618,7 +1017,8 @@ export default class MainGameScene extends Phaser.Scene {
     this.player.boost();
     this.particleSystem.createSuccessParticles(platform.x + platform.width / 2, platform.y);
 
-    this.cameras.main.flash(200, 0, 255, 0, false);
+    this.screenEffectsSystem.enhancedFlash(200, 0x00FF00, 0.6, 'pulse');
+    this.screenEffectsSystem.createRipple(this.player.x, this.player.y, 150, 0x00FF00);
 
     this.uiSystem.showFloatingText(`+${points}`, platform.x + platform.width / 2, platform.y, '#6bcf7f');
   }
@@ -636,7 +1036,7 @@ export default class MainGameScene extends Phaser.Scene {
       this.loseLife();
     }
 
-    this.cameras.main.shake(300, 0.02);
+    this.screenEffectsSystem.enhancedShake(300, 0.02, 'horizontal');
     this.particleSystem.createFailureParticles(platform.x + platform.width / 2, platform.y);
   }
 
@@ -1073,8 +1473,9 @@ export default class MainGameScene extends Phaser.Scene {
     // Create bounce particles
     this.particleSystem.createSuccessParticles(enemySprite.x, enemySprite.y);
     
-    // Screen shake
-    this.cameras.main.shake(100, 0.01);
+    // Enhanced screen shake with ripple
+    this.screenEffectsSystem.enhancedShake(100, 0.01, 'circular');
+    this.screenEffectsSystem.createRipple(this.player.x, this.player.y, 100, 0x6F47EB);
   }
 
   private handleSpawnPatrolEnemy(data: { x: number; y: number; platformX: number; platformWidth: number; patrolId: number }) {
@@ -1142,8 +1543,9 @@ export default class MainGameScene extends Phaser.Scene {
       }
     }
     
-    // Screen flash
-    this.cameras.main.flash(200, 111, 71, 235, false);
+    // Enhanced screen flash with energy wave
+    this.screenEffectsSystem.enhancedFlash(200, 0x6F47EB, 0.8, 'pulse');
+    this.screenEffectsSystem.createEnergyWave(this.player.x, this.player.y, 0, 200);
   }
 
   private handleIncorrectUIAnswer(data: { answer: string; isCorrect: boolean; question: any }) {
@@ -1168,8 +1570,10 @@ export default class MainGameScene extends Phaser.Scene {
       this.loseLife();
     }
     
-    // Screen shake and failure effects
-    this.cameras.main.shake(300, 0.02);
+    // Enhanced failure effects
+    this.screenEffectsSystem.enhancedShake(300, 0.02, 'horizontal');
+    this.screenEffectsSystem.activateChromaticAberration(5, 800);
+    this.screenEffectsSystem.screenPulse(0xFF0000, 0.3, 400);
     if (player) {
       this.particleSystem.createFailureParticles(player.x, player.y);
     }
@@ -1177,7 +1581,7 @@ export default class MainGameScene extends Phaser.Scene {
 
   private loseLife() {
     // Any life loss now restarts the entire game
-    this.cameras.main.flash(300, 255, 0, 0, false);
+    this.screenEffectsSystem.enhancedFlash(300, 0xFF0000, 0.7, 'strobe');
     this.restartGame();
   }
 
@@ -1218,7 +1622,8 @@ export default class MainGameScene extends Phaser.Scene {
     }
     
     // Add visual indicator that a question appeared
-    this.cameras.main.flash(300, 111, 71, 235, false);
+    this.screenEffectsSystem.enhancedFlash(300, 0x6F47EB, 0.8, 'fade');
+    this.screenEffectsSystem.createRipple(this.player.x, this.player.y, 250, 0x6F47EB);
     
     // Show floating notification
     if (player) {

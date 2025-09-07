@@ -53,43 +53,106 @@ export default class UISystem {
   }
 
   private createUIBackground() {
-    // Enhanced UI background with subtle gradient
+    // Glass morphism background with layered effects
+    const bgHeight = 85;
+    
+    // Main glass background with blur simulation
     this.uiBackground = this.scene.add.rectangle(
       0, 0,
       this.scene.cameras.main.width,
-      75, // Slightly taller for premium look
-      THEME.BACKGROUND,
-      0.95 // Slight transparency for modern look
+      bgHeight,
+      0xFFFFFF,
+      0.15 // Ultra-transparent base
     );
     this.uiBackground.setOrigin(0, 0);
-    this.uiBackground.setDepth(1000);
+    this.uiBackground.setDepth(998);
     this.uiBackground.setScrollFactor(0);
     
-    // Add subtle gradient overlay
-    const gradientOverlay = this.scene.add.rectangle(
+    // Frosted glass overlay with multiple layers for depth
+    const frostLayer1 = this.scene.add.rectangle(
       0, 0,
       this.scene.cameras.main.width,
-      75,
+      bgHeight,
+      0x6F47EB,
+      0.08
+    );
+    frostLayer1.setOrigin(0, 0);
+    frostLayer1.setDepth(999);
+    frostLayer1.setScrollFactor(0);
+    
+    const frostLayer2 = this.scene.add.rectangle(
+      0, 0,
+      this.scene.cameras.main.width,
+      bgHeight,
+      0xFFFFFF,
+      0.25
+    );
+    frostLayer2.setOrigin(0, 0);
+    frostLayer2.setDepth(1000);
+    frostLayer2.setScrollFactor(0);
+    
+    // Subtle gradient bands for glass effect
+    const gradientBand1 = this.scene.add.rectangle(
+      0, 0,
+      this.scene.cameras.main.width,
+      25,
       0xF8FAFC,
-      0.3
+      0.4
     );
-    gradientOverlay.setOrigin(0, 0);
-    gradientOverlay.setDepth(1000);
-    gradientOverlay.setScrollFactor(0);
+    gradientBand1.setOrigin(0, 0);
+    gradientBand1.setDepth(1001);
+    gradientBand1.setScrollFactor(0);
+    
+    const gradientBand2 = this.scene.add.rectangle(
+      0, 25,
+      this.scene.cameras.main.width,
+      35,
+      0xE0E7FF,
+      0.15
+    );
+    gradientBand2.setOrigin(0, 0);
+    gradientBand2.setDepth(1001);
+    gradientBand2.setScrollFactor(0);
+    
+    const gradientBand3 = this.scene.add.rectangle(
+      0, 60,
+      this.scene.cameras.main.width,
+      25,
+      0x6F47EB,
+      0.05
+    );
+    gradientBand3.setOrigin(0, 0);
+    gradientBand3.setDepth(1001);
+    gradientBand3.setScrollFactor(0);
 
-    // Enhanced border with shadow effect
-    const shadow = this.scene.add.rectangle(
-      0, 76, this.scene.cameras.main.width, 2, 0x000000, 0.1
+    // Premium shadow with multiple layers
+    const shadowDeep = this.scene.add.rectangle(
+      0, bgHeight + 4, this.scene.cameras.main.width, 8, 0x000000, 0.15
     );
-    shadow.setOrigin(0, 0);
-    shadow.setDepth(999);
-    shadow.setScrollFactor(0);
+    shadowDeep.setOrigin(0, 0);
+    shadowDeep.setDepth(997);
+    shadowDeep.setScrollFactor(0);
+    
+    const shadowMid = this.scene.add.rectangle(
+      0, bgHeight + 2, this.scene.cameras.main.width, 4, 0x000000, 0.08
+    );
+    shadowMid.setOrigin(0, 0);
+    shadowMid.setDepth(998);
+    shadowMid.setScrollFactor(0);
+    
+    // Glass border with highlight
+    const borderHighlight = this.scene.add.rectangle(
+      0, 0, this.scene.cameras.main.width, 1, 0xFFFFFF, 0.6
+    );
+    borderHighlight.setOrigin(0, 0);
+    borderHighlight.setDepth(1002);
+    borderHighlight.setScrollFactor(0);
     
     this.uiBottomBorder = this.scene.add.rectangle(
-      0, 74, this.scene.cameras.main.width, 2, 0xE2E8F0, 1
+      0, bgHeight - 1, this.scene.cameras.main.width, 1, 0x6F47EB, 0.3
     );
     this.uiBottomBorder.setOrigin(0, 0);
-    this.uiBottomBorder.setDepth(1001);
+    this.uiBottomBorder.setDepth(1002);
     this.uiBottomBorder.setScrollFactor(0);
   }
 
@@ -215,22 +278,25 @@ export default class UISystem {
     for (let i = 0; i < 5; i++) {
       const container = this.scene.add.container(
         this.scene.cameras.main.width - 220 + i * 38,
-        38
+        42
       );
       
-      // Enhanced background with gradient
-      const shadow = this.scene.add.circle(1, 1, 16, 0x000000, 0.1);
-      const background = this.scene.add.circle(0, 0, 16, 0xF1F5F9, 0.9);
-      const innerBg = this.scene.add.circle(0, 0, 14, 0xFFFFFF, 0.8);
+      // Glass morphism power-up indicators
+      const outerGlow = this.scene.add.circle(0, 0, 22, 0x6F47EB, 0.1);
+      const shadow = this.scene.add.circle(2, 2, 16, 0x000000, 0.2);
+      const glassBase = this.scene.add.circle(0, 0, 16, 0xFFFFFF, 0.2);
+      const glassFrost = this.scene.add.circle(0, 0, 16, 0x6F47EB, 0.05);
+      const innerHighlight = this.scene.add.circle(0, -4, 10, 0xFFFFFF, 0.4);
       const border = this.scene.add.circle(0, 0, 16);
-      border.setStrokeStyle(2, 0xE2E8F0);
+      border.setStrokeStyle(1.5, 0x6F47EB, 0.3);
       
-      // Add subtle inner glow
-      const glow = this.scene.add.circle(0, 0, 18, 0x7C3AED, 0.05);
+      // Inner glow ring
+      const innerGlow = this.scene.add.circle(0, 0, 14);
+      innerGlow.setStrokeStyle(2, 0xFFFFFF, 0.2);
       
-      container.add([shadow, glow, background, innerBg, border]);
-      container.setDepth(1001);
-      container.setAlpha(0.4);
+      container.add([outerGlow, shadow, glassBase, glassFrost, innerHighlight, innerGlow, border]);
+      container.setDepth(1003);
+      container.setAlpha(0.6);
       container.setScrollFactor(0);
       
       this.powerUpIndicators.push(container);
@@ -420,26 +486,36 @@ export default class UISystem {
   }
 
   showFloatingText(text: string, x: number, y: number, color: string = '#ffffff', fontSize: string = '16px') {
-    // Enhanced floating text with premium styling
+    // Glass morphism floating text background
+    const textBg = this.scene.add.rectangle(x, y, 0, 0, 0xFFFFFF, 0.2);
+    textBg.setDepth(1002);
+    
+    // Enhanced floating text with glass morphism backing
     const floatingText = this.scene.add.text(x, y, text, {
       fontSize,
       color,
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
+      fontStyle: '900',
+      stroke: 'rgba(0,0,0,0.8)',
+      strokeThickness: 4,
       shadow: {
-        offsetX: 2,
-        offsetY: 2,
-        color: '#000000',
-        blur: 4,
+        offsetX: 3,
+        offsetY: 3,
+        color: 'rgba(0,0,0,0.6)',
+        blur: 8,
         stroke: true,
         fill: true
       }
     }).setOrigin(0.5);
     
-    floatingText.setDepth(1003);
+    // Adjust background to text size
+    const textBounds = floatingText.getBounds();
+    textBg.setSize(textBounds.width + 30, textBounds.height + 15);
+    textBg.setStrokeStyle(2, parseInt(color.replace('#', '0x')), 0.4);
+    
+    floatingText.setDepth(1004);
     floatingText.setAlpha(0);
+    textBg.setAlpha(0);
     
     const floatingTextData: FloatingText = {
       text: floatingText,
@@ -448,6 +524,28 @@ export default class UISystem {
     };
     
     this.floatingTexts.push(floatingTextData);
+    
+    // Animate background as well
+    this.scene.tweens.add({
+      targets: textBg,
+      alpha: 0.3,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 200,
+      ease: 'Back.easeOut'
+    });
+    
+    this.scene.tweens.add({
+      targets: textBg,
+      y: y - 60,
+      alpha: 0,
+      scaleX: 0.8,
+      scaleY: 0.8,
+      duration: 2000,
+      delay: 300,
+      ease: 'Power2.easeOut',
+      onComplete: () => textBg.destroy()
+    });
     
     // Enhanced animation with bounce effect
     this.scene.tweens.add({
@@ -504,49 +602,88 @@ export default class UISystem {
     const centerX = this.scene.cameras.main.width / 2;
     const centerY = this.scene.cameras.main.height / 2;
     
-    const completeText = this.scene.add.text(centerX, centerY - 50, 'LEVEL COMPLETE!', {
-      fontSize: '36px',
-      color: '#2ecc71',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 4
+    // Glass morphism completion panel
+    const panelShadow = this.scene.add.rectangle(centerX + 8, centerY + 8, 500, 200, 0x000000, 0.3);
+    const panel = this.scene.add.rectangle(centerX, centerY, 500, 200, 0xFFFFFF, 0.2);
+    const panelFrost = this.scene.add.rectangle(centerX, centerY, 500, 200, 0x6F47EB, 0.1);
+    const panelHighlight = this.scene.add.rectangle(centerX, centerY - 40, 460, 60, 0xFFFFFF, 0.3);
+    const panelBorder = this.scene.add.rectangle(centerX, centerY, 500, 200, undefined);
+    panelBorder.setStrokeStyle(3, 0x6F47EB, 0.5);
+    
+    const completeText = this.scene.add.text(centerX, centerY - 35, 'LEVEL COMPLETE!', {
+      fontSize: '42px',
+      color: '#6F47EB',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontStyle: '900',
+      stroke: 'rgba(255,255,255,0.8)',
+      strokeThickness: 5,
+      shadow: {
+        offsetX: 3,
+        offsetY: 3,
+        color: 'rgba(0,0,0,0.4)',
+        blur: 6,
+        stroke: true,
+        fill: true
+      }
     }).setOrigin(0.5);
     
-    const scoreText = this.scene.add.text(centerX, centerY + 10, `Score: ${score.toLocaleString()}`, {
-      fontSize: '24px',
-      color: '#f39c12',
-      fontFamily: 'Arial',
+    const scoreText = this.scene.add.text(centerX, centerY + 25, `Score: ${score.toLocaleString()}`, {
+      fontSize: '28px',
+      color: '#1F2937',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3
+      stroke: 'rgba(255,255,255,0.6)',
+      strokeThickness: 3,
+      shadow: {
+        offsetX: 2,
+        offsetY: 2,
+        color: 'rgba(0,0,0,0.3)',
+        blur: 4,
+        stroke: true,
+        fill: true
+      }
     }).setOrigin(0.5);
     
-    completeText.setDepth(1004);
-    scoreText.setDepth(1004);
+    [panelShadow, panel, panelFrost, panelHighlight, panelBorder].forEach(el => {
+      el.setDepth(1003);
+      el.setAlpha(0);
+    });
     
-    completeText.setAlpha(0);
-    scoreText.setAlpha(0);
+    completeText.setDepth(1005);
+    scoreText.setDepth(1005);
     
+    [completeText, scoreText].forEach(el => el.setAlpha(0));
+    
+    // Animate panel first
+    this.scene.tweens.add({
+      targets: [panelShadow, panel, panelFrost, panelHighlight, panelBorder],
+      alpha: 1,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 600,
+      ease: 'Back.easeOut'
+    });
+    
+    // Then animate text
     this.scene.tweens.add({
       targets: [completeText, scoreText],
       alpha: 1,
-      scaleX: 1.2,
-      scaleY: 1.2,
+      scaleX: 1.1,
+      scaleY: 1.1,
       duration: 800,
+      delay: 300,
       ease: 'Back.easeOut',
       onComplete: () => {
-        this.scene.time.delayedCall(2000, () => {
+        this.scene.time.delayedCall(2500, () => {
           this.scene.tweens.add({
-            targets: [completeText, scoreText],
+            targets: [panelShadow, panel, panelFrost, panelHighlight, panelBorder, completeText, scoreText],
             alpha: 0,
             scaleX: 0.8,
             scaleY: 0.8,
-            duration: 500,
+            duration: 600,
             ease: 'Power2.easeIn',
             onComplete: () => {
-              completeText.destroy();
-              scoreText.destroy();
+              [panelShadow, panel, panelFrost, panelHighlight, panelBorder, completeText, scoreText].forEach(el => el.destroy());
             }
           });
         });
@@ -603,30 +740,92 @@ export default class UISystem {
     const screenWidth = this.scene.cameras.main.width;
     const padding = 40;
     
-    const questionY = 120; // Fixed position at top of screen
+    const questionY = 130; // Fixed position at top of screen
+    const questionWidth = screenWidth - padding * 2;
+    const questionHeight = 140;
+    
+    // Multi-layered glass morphism question background
+    const deepShadow = this.scene.add.rectangle(
+      screenWidth / 2 + 6,
+      questionY + 6,
+      questionWidth,
+      questionHeight,
+      0x000000,
+      0.15
+    );
+    deepShadow.setDepth(1990);
+    deepShadow.setScrollFactor(0);
+    
+    const midShadow = this.scene.add.rectangle(
+      screenWidth / 2 + 3,
+      questionY + 3,
+      questionWidth,
+      questionHeight,
+      0x000000,
+      0.1
+    );
+    midShadow.setDepth(1995);
+    midShadow.setScrollFactor(0);
     
     this.currentQuestionBg = this.scene.add.rectangle(
       screenWidth / 2,
       questionY,
-      screenWidth - padding * 2,
-      120,
+      questionWidth,
+      questionHeight,
       0xFFFFFF,
-      1.0
+      0.25
     );
-    this.currentQuestionBg.setStrokeStyle(1, 0xE5E7EB, 1);
     this.currentQuestionBg.setDepth(2000);
     this.currentQuestionBg.setScrollFactor(0);
     
-    const shadowBg = this.scene.add.rectangle(
-      screenWidth / 2 + 2,
-      questionY + 2,
-      screenWidth - padding * 2,
-      120,
-      0x000000,
-      0.1
+    // Glass frosting layers
+    const frostLayer = this.scene.add.rectangle(
+      screenWidth / 2,
+      questionY,
+      questionWidth,
+      questionHeight,
+      0x6F47EB,
+      0.08
     );
-    shadowBg.setDepth(1999);
-    shadowBg.setScrollFactor(0);
+    frostLayer.setDepth(2001);
+    frostLayer.setScrollFactor(0);
+    
+    // Highlight stripe at top
+    const topHighlight = this.scene.add.rectangle(
+      screenWidth / 2,
+      questionY - questionHeight/2 + 8,
+      questionWidth - 20,
+      16,
+      0xFFFFFF,
+      0.4
+    );
+    topHighlight.setDepth(2002);
+    topHighlight.setScrollFactor(0);
+    
+    // Glass border with glow
+    const borderGlow = this.scene.add.rectangle(
+      screenWidth / 2,
+      questionY,
+      questionWidth + 4,
+      questionHeight + 4,
+      undefined
+    );
+    borderGlow.setStrokeStyle(3, 0x6F47EB, 0.3);
+    borderGlow.setDepth(1998);
+    borderGlow.setScrollFactor(0);
+    
+    const glassBorder = this.scene.add.rectangle(
+      screenWidth / 2,
+      questionY,
+      questionWidth,
+      questionHeight,
+      undefined
+    );
+    glassBorder.setStrokeStyle(2, 0xFFFFFF, 0.5);
+    glassBorder.setDepth(2003);
+    glassBorder.setScrollFactor(0);
+    
+    const shadowBg = midShadow;
     
     this.currentQuestion = this.scene.add.text(
       screenWidth / 2,
@@ -661,13 +860,18 @@ export default class UISystem {
       
       const isCorrect = answer === question.correct;
       
-      const bgColor = 0xFFFFFF;
-      const borderColor = isCorrect ? THEME.HIGHLIGHT : 0x000000;
+      // Glass morphism answer buttons
+      const buttonShadow = this.scene.add.rectangle(3, 3, buttonWidth, buttonHeight, 0x000000, 0.2);
       
-      const buttonBg = this.scene.add.rectangle(0, 0, buttonWidth, buttonHeight, bgColor, 1);
-      buttonBg.setStrokeStyle(3, borderColor, 1);
+      const buttonBg = this.scene.add.rectangle(0, 0, buttonWidth, buttonHeight, 0xFFFFFF, 0.3);
       
-      const buttonShadow = this.scene.add.rectangle(2, 2, buttonWidth, buttonHeight, 0x000000, 0.1);
+      const buttonFrost = this.scene.add.rectangle(0, 0, buttonWidth, buttonHeight, 0x6F47EB, 0.05);
+      
+      const buttonHighlight = this.scene.add.rectangle(0, -buttonHeight/4, buttonWidth - 20, buttonHeight/3, 0xFFFFFF, 0.4);
+      
+      const borderColor = isCorrect ? THEME.HIGHLIGHT : 0x6F47EB;
+      const buttonBorder = this.scene.add.rectangle(0, 0, buttonWidth, buttonHeight, undefined);
+      buttonBorder.setStrokeStyle(2, borderColor, 0.6);
       
       const buttonText = this.scene.add.text(0, 0, answer, {
         fontSize: '18px',
@@ -679,26 +883,30 @@ export default class UISystem {
       });
       buttonText.setOrigin(0.5);
       
-      container.add([buttonShadow, buttonBg, buttonText]);
+      container.add([buttonShadow, buttonBg, buttonFrost, buttonHighlight, buttonBorder, buttonText]);
       container.setDepth(2000);
       container.setScrollFactor(0);
       container.setInteractive(new Phaser.Geom.Rectangle(-buttonWidth/2, -buttonHeight/2, buttonWidth, buttonHeight), Phaser.Geom.Rectangle.Contains);
       
       container.on('pointerover', () => {
-        buttonBg.setFillStyle(isCorrect ? THEME.HIGHLIGHT : 0x000000);
+        buttonBg.setFillStyle(0x6F47EB, 0.4);
+        buttonFrost.setFillStyle(0xFFFFFF, 0.2);
         buttonText.setColor('#FFFFFF');
+        buttonBorder.setStrokeStyle(3, 0x6F47EB, 1);
         this.scene.tweens.add({
           targets: container,
-          scaleX: 1.02,
-          scaleY: 1.02,
+          scaleX: 1.03,
+          scaleY: 1.03,
           duration: 200,
-          ease: 'Power2.easeOut'
+          ease: 'Back.easeOut'
         });
       });
       
       container.on('pointerout', () => {
-        buttonBg.setFillStyle(0xFFFFFF);
-        buttonText.setColor(isCorrect ? Phaser.Display.Color.RGBToString(124, 58, 237) : '#000000');
+        buttonBg.setFillStyle(0xFFFFFF, 0.3);
+        buttonFrost.setFillStyle(0x6F47EB, 0.05);
+        buttonText.setColor(isCorrect ? Phaser.Display.Color.RGBToString(111, 71, 235) : '#1F2937');
+        buttonBorder.setStrokeStyle(2, borderColor, 0.6);
         this.scene.tweens.add({
           targets: container,
           scaleX: 1,

@@ -6,6 +6,8 @@ export default class ParticleSystem {
   private scene: MainGameScene;
   private particles: Particle[] = [];
   private particlePool: Phaser.GameObjects.Graphics[] = [];
+  private sparklePool: Phaser.GameObjects.Graphics[] = [];
+  private trailPool: Phaser.GameObjects.Graphics[] = [];
 
   constructor(scene: MainGameScene) {
     this.scene = scene;
@@ -13,11 +15,28 @@ export default class ParticleSystem {
   }
 
   private initializeParticlePool() {
-    for (let i = 0; i < 100; i++) {
+    // Main particle pool
+    for (let i = 0; i < 150; i++) {
       const particle = this.scene.add.graphics();
       particle.setActive(false);
       particle.setVisible(false);
       this.particlePool.push(particle);
+    }
+    
+    // Sparkle effect pool
+    for (let i = 0; i < 50; i++) {
+      const sparkle = this.scene.add.graphics();
+      sparkle.setActive(false);
+      sparkle.setVisible(false);
+      this.sparklePool.push(sparkle);
+    }
+    
+    // Trail effect pool
+    for (let i = 0; i < 30; i++) {
+      const trail = this.scene.add.graphics();
+      trail.setActive(false);
+      trail.setVisible(false);
+      this.trailPool.push(trail);
     }
   }
 
@@ -39,29 +58,65 @@ export default class ParticleSystem {
   }
 
   createJumpParticles(x: number, y: number) {
-    for (let i = 0; i < 8; i++) {
+    // Main dust particles
+    for (let i = 0; i < 12; i++) {
       this.createParticle({
-        x: x + Phaser.Math.Between(-10, 10),
-        y: y + Phaser.Math.Between(-5, 5),
-        velocityX: Phaser.Math.Between(-50, 50),
-        velocityY: Phaser.Math.Between(-20, -5),
-        life: 500 + Phaser.Math.Between(0, 300),
-        maxLife: 800,
-        color: '#7C3AED',
-        size: Phaser.Math.Between(2, 4)
+        x: x + Phaser.Math.Between(-15, 15),
+        y: y + Phaser.Math.Between(-8, 8),
+        velocityX: Phaser.Math.Between(-80, 80),
+        velocityY: Phaser.Math.Between(-40, -10),
+        life: 600 + Phaser.Math.Between(0, 400),
+        maxLife: 1000,
+        color: '#6F47EB',
+        size: Phaser.Math.Between(2, 5)
       });
     }
+    
+    // Add sparkle effects
+    this.createSparkles(x, y, '#FFFFFF', 8);
+    
+    // Ground impact effect
+    this.createGroundImpact(x, y + 16);
   }
 
   createSuccessParticles(x: number, y: number) {
-    const colors = ['#7C3AED', '#8B5CF6', '#ffffff'];
+    const colors = ['#6F47EB', '#8B5CF6', '#ffffff', '#E0E7FF'];
     
+    // Main celebration particles
+    for (let i = 0; i < 20; i++) {
+      this.createParticle({
+        x: x + Phaser.Math.Between(-25, 25),
+        y: y + Phaser.Math.Between(-15, 15),
+        velocityX: Phaser.Math.Between(-120, 120),
+        velocityY: Phaser.Math.Between(-180, -70),
+        life: 1200 + Phaser.Math.Between(0, 600),
+        maxLife: 1800,
+        color: Phaser.Utils.Array.GetRandom(colors),
+        size: Phaser.Math.Between(3, 10)
+      });
+    }
+    
+    // Enhanced burst effect
+    this.createBurst(x, y, '#6F47EB', 25);
+    
+    // Multiple sparkle rings
+    this.createSparkleRing(x, y, 30, '#FFFFFF');
+    this.createSparkleRing(x, y, 50, '#6F47EB');
+    
+    // Confetti effect
+    this.createConfetti(x, y);
+  }
+
+  createFailureParticles(x: number, y: number) {
+    const colors = ['#FF6B6B', '#FF8E8E', '#FFFFFF'];
+    
+    // Failure particles with downward emphasis
     for (let i = 0; i < 15; i++) {
       this.createParticle({
         x: x + Phaser.Math.Between(-20, 20),
-        y: y + Phaser.Math.Between(-10, 10),
+        y: y + Phaser.Math.Between(-15, 15),
         velocityX: Phaser.Math.Between(-100, 100),
-        velocityY: Phaser.Math.Between(-150, -50),
+        velocityY: Phaser.Math.Between(-80, 20),
         life: 1000 + Phaser.Math.Between(0, 500),
         maxLife: 1500,
         color: Phaser.Utils.Array.GetRandom(colors),
@@ -69,24 +124,8 @@ export default class ParticleSystem {
       });
     }
     
-    this.createBurst(x, y, '#7C3AED', 20);
-  }
-
-  createFailureParticles(x: number, y: number) {
-    const colors = ['#EF4444', '#F87171', '#ffffff'];
-    
-    for (let i = 0; i < 12; i++) {
-      this.createParticle({
-        x: x + Phaser.Math.Between(-15, 15),
-        y: y + Phaser.Math.Between(-10, 10),
-        velocityX: Phaser.Math.Between(-80, 80),
-        velocityY: Phaser.Math.Between(-100, -30),
-        life: 800 + Phaser.Math.Between(0, 400),
-        maxLife: 1200,
-        color: Phaser.Utils.Array.GetRandom(colors),
-        size: Phaser.Math.Between(2, 6)
-      });
-    }
+    // Create X-shaped particle burst for failure
+    this.createXBurst(x, y, '#FF6B6B');
   }
 
   createPowerUpParticles(x: number, y: number, type: string) {
@@ -181,29 +220,151 @@ export default class ParticleSystem {
         parseInt(color.replace('#', '0x'))
       );
       
-      // Enhanced sparkle animation
-      sparkle.setAlpha(0.8);
+      // Enhanced sparkle animation with glow
+      sparkle.setAlpha(0.9);
+      sparkle.setBlendMode(Phaser.BlendModes.ADD);
       
       this.scene.tweens.add({
         targets: sparkle,
         scaleX: 0,
         scaleY: 0,
         alpha: 0,
-        rotation: Math.PI * 3,
-        duration: 1000 + Phaser.Math.Between(0, 400),
+        rotation: Math.PI * 4,
+        duration: 1200 + Phaser.Math.Between(0, 500),
         ease: 'Power2.easeOut',
         onComplete: () => sparkle.destroy()
       });
       
-      // Add floating motion to sparkles
+      // Enhanced floating motion
       this.scene.tweens.add({
         targets: sparkle,
-        x: sparkle.x + Phaser.Math.Between(-20, 20),
-        y: sparkle.y - Phaser.Math.Between(20, 60),
-        duration: 1000 + Phaser.Math.Between(0, 400),
+        x: sparkle.x + Phaser.Math.Between(-30, 30),
+        y: sparkle.y - Phaser.Math.Between(30, 80),
+        duration: 1200 + Phaser.Math.Between(0, 500),
         ease: 'Sine.easeOut'
       });
     }
+  }
+
+  // Ground impact effect
+  createGroundImpact(x: number, y: number) {
+    const colors = ['#6F47EB', '#FFFFFF'];
+    
+    for (let i = 0; i < 8; i++) {
+      this.createParticle({
+        x: x + Phaser.Math.Between(-25, 25),
+        y: y,
+        velocityX: Phaser.Math.Between(-80, 80),
+        velocityY: Phaser.Math.Between(-40, -15),
+        life: 500 + Phaser.Math.Between(0, 300),
+        maxLife: 800,
+        color: Phaser.Utils.Array.GetRandom(colors),
+        size: Phaser.Math.Between(2, 4)
+      });
+    }
+  }
+
+  // Sparkle ring effect
+  createSparkleRing(x: number, y: number, radius: number, color: string) {
+    const count = Math.floor(radius / 10);
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count;
+      const sparkleX = x + Math.cos(angle) * radius;
+      const sparkleY = y + Math.sin(angle) * radius;
+      
+      const sparkle = this.scene.add.star(
+        sparkleX, sparkleY, 4, 3, 6,
+        parseInt(color.replace('#', '0x'))
+      );
+      sparkle.setScale(0.5);
+      sparkle.setBlendMode(Phaser.BlendModes.ADD);
+      
+      this.scene.tweens.add({
+        targets: sparkle,
+        scaleX: 0,
+        scaleY: 0,
+        alpha: 0,
+        x: x + Math.cos(angle) * (radius + 30),
+        y: y + Math.sin(angle) * (radius + 30),
+        duration: 800,
+        ease: 'Power2.easeOut',
+        onComplete: () => sparkle.destroy()
+      });
+    }
+  }
+
+  // Confetti effect
+  createConfetti(x: number, y: number) {
+    const colors = ['#6F47EB', '#FFFFFF', '#E0E7FF', '#8B5CF6'];
+    
+    for (let i = 0; i < 15; i++) {
+      const confetti = this.scene.add.rectangle(
+        x + Phaser.Math.Between(-20, 20),
+        y + Phaser.Math.Between(-15, 15),
+        Phaser.Math.Between(6, 12),
+        Phaser.Math.Between(3, 6),
+        parseInt(Phaser.Utils.Array.GetRandom(colors).replace('#', '0x'))
+      );
+      
+      confetti.setRotation(Phaser.Math.Between(0, Math.PI * 2));
+      confetti.setAlpha(0.8);
+      
+      this.scene.tweens.add({
+        targets: confetti,
+        x: x + Phaser.Math.Between(-120, 120),
+        y: y + Phaser.Math.Between(60, 180),
+        rotation: confetti.rotation + Math.PI * 6,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 2000,
+        ease: 'Power2.easeOut',
+        onComplete: () => confetti.destroy()
+      });
+    }
+  }
+
+  // X-shaped burst for failures
+  createXBurst(x: number, y: number, color: string) {
+    // Create X pattern with lines
+    const xLine1 = this.scene.add.line(x, y, -20, -20, 20, 20, parseInt(color.replace('#', '0x')));
+    const xLine2 = this.scene.add.line(x, y, -20, 20, 20, -20, parseInt(color.replace('#', '0x')));
+    
+    [xLine1, xLine2].forEach(line => {
+      line.setLineWidth(4);
+      line.setAlpha(0.8);
+      
+      this.scene.tweens.add({
+        targets: line,
+        scaleX: 2,
+        scaleY: 2,
+        alpha: 0,
+        duration: 600,
+        ease: 'Power2.easeOut',
+        onComplete: () => line.destroy()
+      });
+    });
+    
+    // Add particles along the X lines
+    const directions = [
+      { x: 1, y: -1 }, { x: -1, y: -1 },
+      { x: 1, y: 1 }, { x: -1, y: 1 }
+    ];
+    
+    directions.forEach(dir => {
+      for (let i = 1; i <= 6; i++) {
+        this.createParticle({
+          x: x + (dir.x * i * 10),
+          y: y + (dir.y * i * 10),
+          velocityX: dir.x * 100,
+          velocityY: dir.y * 100,
+          life: 700,
+          maxLife: 700,
+          color: color,
+          size: 4
+        });
+      }
+    });
   }
 
   private createParticle(config: Particle) {

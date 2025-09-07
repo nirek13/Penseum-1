@@ -293,8 +293,8 @@ export default class PlatformSystem {
   private createQuestionDisplay(question: Question, customY?: number) {
     const padding = 20;
     const maxWidth = this.scene.cameras.main.width - padding * 2;
-    // Position question display above platforms when custom Y is provided
-    const displayY = customY !== undefined ? customY - 120 : 60;
+    // Always position question display at top of screen for infinite platformer
+    const displayY = customY !== undefined ? 60 : 60; // Always at top when in infinite mode
     
     this.questionBackground = this.scene.add.rectangle(
       this.scene.cameras.main.width / 2,
@@ -389,27 +389,34 @@ export default class PlatformSystem {
     const platformInfo = platform.getData('platformInfo') as Platform;
     
     if (platformInfo) {
-      this.animatePlatformSelection(platform);
-      
-      // Give upward boost for correct answers
       if (platformInfo.isCorrect) {
+        // Handle correct answer
+        this.animatePlatformSelection(platform);
+        
+        // Give upward boost for correct answers
         const boostVelocity = -400; // Strong upward boost
         player.setVelocityY(boostVelocity);
         
         // Create visual effect for boost
         this.createBoostEffect(player.x, player.y);
+        
+        // Emit event to game scene
+        this.scene.events.emit('answer-selected', {
+          platform: platformInfo,
+          isCorrect: true
+        });
+        
+        // Handle platform conversion after a delay
+        this.scene.time.delayedCall(1000, () => {
+          this.convertCorrectPlatformToRegular(platform);
+          this.removeIncorrectPlatforms(platform);
+          this.clearQuestion();
+          this.clearAnswerTexts();
+        });
+      } else {
+        // Handle incorrect answer - platform disappears immediately
+        this.handleIncorrectAnswerPlatform(platform, platformInfo);
       }
-      
-      // Emit event to game scene
-      this.scene.events.emit('answer-selected', {
-        platform: platformInfo,
-        isCorrect: platformInfo.isCorrect
-      });
-      
-      // Clear only question platforms after a delay, keep regular climbing platforms
-      this.scene.time.delayedCall(1000, () => {
-        this.clearQuestionPlatforms();
-      });
     }
   }
 
@@ -483,6 +490,158 @@ export default class PlatformSystem {
     
     // Clear platformData array as it only contains question platforms
     this.platformData = [];
+  }
+
+  private convertCorrectPlatformToRegular(correctPlatform: Phaser.Physics.Arcade.Sprite) {
+    const platformInfo = correctPlatform.getData('platformInfo') as Platform;
+    
+    // Find and fade out the corresponding answer text
+    const answerTextIndex = this.platformData.findIndex(p => p.id === platformInfo.id);
+    if (answerTextIndex !== -1 && this.answerTexts[answerTextIndex]) {
+      this.scene.tweens.add({
+        targets: this.answerTexts[answerTextIndex],
+        alpha: 0,
+        duration: 500,
+        ease: 'Power2.easeOut',
+        onComplete: () => {
+          this.answerTexts[answerTextIndex].destroy();
+        }
+      });
+    }
+    
+    // Remove question platform data to make it a regular platform
+    correctPlatform.setData('platformInfo', null);
+    
+    // Change texture to neutral platform
+    correctPlatform.setTexture('platform-neutral');
+    
+    // Clear any tint and stop any question-specific animations
+    correctPlatform.clearTint();
+    this.scene.tweens.killTweensOf(correctPlatform);
+    
+    // Reset scale and alpha to normal
+    correctPlatform.setScale(1);
+    correctPlatform.setAlpha(1);
+    
+    // Add subtle visual effect to indicate it's now permanent
+    this.scene.tweens.add({
+      targets: correctPlatform,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 300,
+      yoyo: true,
+      ease: 'Power2.easeInOut',
+      onComplete: () => {
+        // Subtle permanent glow effect
+        this.scene.tweens.add({
+          targets: correctPlatform,
+          alpha: 0.9,
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    });
+  }
+
+  private handleIncorrectAnswerPlatform(platform: Phaser.Physics.Arcade.Sprite, platformInfo: Platform) {
+    // Find and remove the corresponding answer text immediately
+    const answerTextIndex = this.platformData.findIndex(p => p.id === platformInfo.id);
+    if (answerTextIndex !== -1 && this.answerTexts[answerTextIndex]) {
+      this.answerTexts[answerTextIndex].destroy();
+      this.answerTexts[answerTextIndex] = null as any; // Mark as destroyed
+    }
+    
+    // Emit event to game scene for incorrect answer
+    this.scene.events.emit('answer-selected', {
+      platform: platformInfo,
+      isCorrect: false
+    });
+    
+    // Create crumbling effect
+    this.createCrumblingEffect(platform.x + 75, platform.y + 20);
+    
+    // Immediately animate platform disappearance
+    platform.setTint(0xff0000); // Red tint to show it's wrong
+    
+    this.scene.tweens.add({
+      targets: platform,
+      alpha: 0,
+      scaleX: 0.1,
+      scaleY: 0.1,
+      rotation: 0.3,
+      y: platform.y + 50, // Fall down effect
+      duration: 300,
+      ease: 'Power2.easeIn',
+      onComplete: () => {
+        this.platforms.remove(platform);
+        platform.destroy();
+      }
+    });
+    
+    // Remove this platform from platformData
+    const platformIndex = this.platformData.findIndex(p => p.id === platformInfo.id);
+    if (platformIndex !== -1) {
+      this.platformData.splice(platformIndex, 1);
+    }
+  }
+
+  private createCrumblingEffect(x: number, y: number) {
+    // Create crumbling particles with red color for wrong answers
+    for (let i = 0; i < 10; i++) {
+      const particle = this.scene.add.rectangle(x, y, 4, 4, 0xff4444);
+      
+      const velocityX = Phaser.Math.Between(-150, 150);
+      const velocityY = Phaser.Math.Between(-200, 50);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: x + velocityX,
+        y: y + velocityY,
+        alpha: 0,
+        rotation: Math.PI * 2,
+        duration: 800,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  private removeIncorrectPlatforms(correctPlatform: Phaser.Physics.Arcade.Sprite) {
+    const platformsToRemove: Phaser.Physics.Arcade.Sprite[] = [];
+    
+    this.platforms.children.entries.forEach(platform => {
+      const sprite = platform as Phaser.Physics.Arcade.Sprite;
+      const platformInfo = sprite.getData('platformInfo');
+      const platformType = sprite.getData('type');
+      
+      // Remove remaining incorrect answer platforms and approach platforms, but keep the correct one
+      if ((platformInfo && !platformInfo.isCorrect && sprite !== correctPlatform) || platformType === 'approach') {
+        platformsToRemove.push(sprite);
+      }
+    });
+    
+    // Animate removal of remaining incorrect platforms
+    platformsToRemove.forEach((platform, index) => {
+      this.scene.tweens.add({
+        targets: platform,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        rotation: Math.PI,
+        duration: 500,
+        delay: index * 100,
+        ease: 'Power2.easeIn',
+        onComplete: () => {
+          this.platforms.remove(platform);
+          platform.destroy();
+        }
+      });
+    });
+    
+    // Update platformData to remove incorrect platforms
+    this.platformData = this.platformData.filter(data => data.isCorrect);
   }
 
   private clearQuestion() {
