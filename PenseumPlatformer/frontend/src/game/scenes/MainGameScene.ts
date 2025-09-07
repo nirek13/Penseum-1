@@ -60,7 +60,7 @@ export default class MainGameScene extends Phaser.Scene {
   private questionHeightTracker = {
     lastQuestionHeight: 0,        // Y position where last question was triggered
     nextQuestionTriggerHeight: 0, // Y position to trigger next question
-    heightPerQuestion: 200,      // Estimated height climbed in ~45 seconds
+    heightPerQuestion: 20000,      // Estimated height climbed in ~45 seconds
     hasActiveQuestion: false      // Whether a question UI is currently shown
   };
 

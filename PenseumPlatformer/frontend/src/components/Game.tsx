@@ -74,7 +74,7 @@ const Game: React.FC<GameProps> = ({ playerName, onGameOver }) => {
           height: '100%'
         }}
       />
-      <div style={{
+      {/* <div style={{
         position: 'absolute',
         top: '56px',
         left: '50%',
@@ -101,7 +101,7 @@ const Game: React.FC<GameProps> = ({ playerName, onGameOver }) => {
           <span><strong style={{ color: '#7C3AED' }}>Jump:</strong> SPACE or ↑</span>
           <span><strong style={{ color: '#7C3AED' }}>Player:</strong> {playerName}</span>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
