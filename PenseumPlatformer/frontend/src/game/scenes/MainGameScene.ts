@@ -1211,10 +1211,11 @@ export default class MainGameScene extends Phaser.Scene {
     if (player) {
       this.questionHeightTracker.lastQuestionHeight = player.y;
       this.questionHeightTracker.nextQuestionTriggerHeight = player.y - this.questionHeightTracker.heightPerQuestion;
+      
+      // Create question platforms above the player's current position
+      const questionY = player.y - 300; // Place platforms above player
+      this.platformSystem.createPlatformsForQuestion(question, questionY);
     }
-    
-    // Show question via UI system overlay
-    this.uiSystem.showQuestion(question);
     
     // Add visual indicator that a question appeared
     this.cameras.main.flash(300, 111, 71, 235, false);

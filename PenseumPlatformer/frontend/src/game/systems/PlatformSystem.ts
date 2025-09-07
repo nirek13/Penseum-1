@@ -39,25 +39,36 @@ export default class PlatformSystem {
     });
   }
 
-  createPlatformsForQuestion(question: Question) {
-    this.clearPlatforms();
+  createPlatformsForQuestion(question: Question, customY?: number) {
+    // Only clear previous question UI, NOT the platforms for infinite climbing
     this.clearQuestion();
+    this.clearAnswerTexts();
     
-    this.createQuestionDisplay(question);
+    this.createQuestionDisplay(question, customY);
     
     // Increment platform counter and check for patrol platforms
     this.platformCounter++;
     
     const platformWidth = 150;
     const platformHeight = 40;
-    const spacing = (this.scene.cameras.main.width - (platformWidth * 4)) / 5;
-    const baseY = this.scene.cameras.main.height - 200;
+    const screenWidth = this.scene.cameras.main.width;
+    // Use customY if provided, otherwise use default position
+    const baseY = customY !== undefined ? customY : this.scene.cameras.main.height - 200;
     
     this.platformData = [];
     
+    // Create approach platforms to ensure question platforms are accessible
+    if (customY !== undefined) {
+      this.createApproachPlatforms(baseY, screenWidth, platformWidth);
+    }
+    
+    // Create symmetrical platform positions guaranteed to be accessible
+    const platformPositions = this.generateSymmetricalPlatformPositions(question.answers.length, screenWidth, baseY, platformWidth);
+    
     question.answers.forEach((answer, index) => {
-      const x = spacing + index * (platformWidth + spacing);
-      const y = baseY + Phaser.Math.Between(-50, 50);
+      const position = platformPositions[index];
+      const x = position.x;
+      const y = position.y;
       
       const isCorrect = answer === question.correct;
       const platformTexture = isCorrect ? 'platform-correct' : 'platform-incorrect';
@@ -122,22 +133,23 @@ export default class PlatformSystem {
         });
       }
       
-      // Animate platform appearance
+      // Animate platform appearance with staggered timing for symmetrical effect
+      const animationDelay = Math.abs(index - (question.answers.length - 1) / 2) * 100;
       this.scene.tweens.add({
         targets: platform,
         y: y,
-        duration: 500 + index * 100,
+        duration: 500,
         ease: 'Bounce.easeOut',
-        delay: index * 100
+        delay: animationDelay
       });
       
       this.scene.tweens.add({
         targets: answerText,
         y: y + platformHeight / 2,
         alpha: 1,
-        duration: 500 + index * 100,
+        duration: 500,
         ease: 'Power2.easeOut',
-        delay: index * 100
+        delay: animationDelay
       });
       
       // Pulse correct answer
@@ -155,13 +167,138 @@ export default class PlatformSystem {
     });
   }
 
-  private createQuestionDisplay(question: Question) {
+  private generateSymmetricalPlatformPositions(numAnswers: number, screenWidth: number, baseY: number, platformWidth: number): Array<{x: number, y: number}> {
+    const positions: Array<{x: number, y: number}> = [];
+    const centerX = screenWidth / 2;
+    const minSpacing = 50; // Minimum spacing between platforms
+    const maxHorizontalSpread = screenWidth * 0.8; // Use 80% of screen width
+    
+    // Create symmetrical layout based on number of answers
+    if (numAnswers === 2) {
+      // Two platforms symmetrically placed
+      const offset = Math.min(200, maxHorizontalSpread / 4);
+      positions.push(
+        { x: centerX - offset - platformWidth / 2, y: baseY },
+        { x: centerX + offset - platformWidth / 2, y: baseY }
+      );
+    } else if (numAnswers === 3) {
+      // Three platforms: center and two sides
+      const sideOffset = Math.min(220, maxHorizontalSpread / 3);
+      positions.push(
+        { x: centerX - sideOffset - platformWidth / 2, y: baseY },
+        { x: centerX - platformWidth / 2, y: baseY + 30 }, // Center slightly lower for variety
+        { x: centerX + sideOffset - platformWidth / 2, y: baseY }
+      );
+    } else if (numAnswers === 4) {
+      // Four platforms in symmetrical diamond/cross pattern
+      const spacing = Math.min(160, maxHorizontalSpread / 5);
+      positions.push(
+        { x: centerX - spacing * 1.5 - platformWidth / 2, y: baseY },
+        { x: centerX - spacing / 2 - platformWidth / 2, y: baseY - 40 },
+        { x: centerX + spacing / 2 - platformWidth / 2, y: baseY - 40 },
+        { x: centerX + spacing * 1.5 - platformWidth / 2, y: baseY }
+      );
+    } else {
+      // For more than 4 answers, arrange in symmetrical arc
+      const totalSpacing = Math.min(maxHorizontalSpread, (numAnswers - 1) * (platformWidth + minSpacing));
+      const startX = centerX - totalSpacing / 2;
+      const arcHeight = 60; // Height variation for arc effect
+      
+      for (let i = 0; i < numAnswers; i++) {
+        const progress = numAnswers > 1 ? i / (numAnswers - 1) : 0.5;
+        const x = startX + progress * totalSpacing - platformWidth / 2;
+        
+        // Create arc effect with sine curve
+        const arcProgress = (progress - 0.5) * Math.PI;
+        const arcOffset = Math.sin(arcProgress) * arcHeight;
+        const y = baseY + arcOffset;
+        
+        positions.push({ x, y });
+      }
+    }
+    
+    // Ensure all positions are within screen bounds and accessible
+    return this.validateAndAdjustPlatformPositions(positions, screenWidth, platformWidth);
+  }
+  
+  private createApproachPlatforms(questionY: number, screenWidth: number, platformWidth: number) {
+    // Create 2-3 intermediate platforms leading to the question area
+    const numApproachPlatforms = 3;
+    const verticalSpacing = 120; // Height between approach platforms
+    const centerX = screenWidth / 2;
+    
+    for (let i = 0; i < numApproachPlatforms; i++) {
+      const y = questionY + (i + 1) * verticalSpacing; // Below question platforms
+      const xOffset = (i % 2 === 0) ? -150 : 150; // Alternate left/right
+      const x = centerX + xOffset - platformWidth / 2;
+      
+      // Ensure approach platform is within screen bounds
+      const clampedX = Math.max(30, Math.min(screenWidth - platformWidth - 30, x));
+      
+      // Create approach platform using neutral texture
+      const platform = this.scene.physics.add.staticSprite(clampedX, y, 'platform-neutral');
+      platform.setOrigin(0, 0);
+      platform.setScale(1);
+      
+      // Set physics body
+      platform.body?.setSize(platformWidth, 40);
+      platform.body?.setOffset(0, 0);
+      
+      this.platforms.add(platform);
+      
+      // Mark as approach platform (not question platform) so it won't be cleared
+      platform.setData('type', 'approach');
+      
+      // Animate appearance
+      platform.setAlpha(0);
+      this.scene.tweens.add({
+        targets: platform,
+        alpha: 0.8, // Slightly transparent to indicate they're temporary
+        duration: 500,
+        ease: 'Power2.easeOut',
+        delay: i * 150
+      });
+    }
+  }
+
+  private validateAndAdjustPlatformPositions(positions: Array<{x: number, y: number}>, screenWidth: number, platformWidth: number): Array<{x: number, y: number}> {
+    const minEdgeDistance = 30;
+    const maxX = screenWidth - platformWidth - minEdgeDistance;
+    
+    return positions.map((pos, index) => {
+      // Clamp X position to screen bounds
+      const clampedX = Math.max(minEdgeDistance, Math.min(maxX, pos.x));
+      
+      // Ensure platforms don't overlap by checking distance to other platforms
+      let adjustedX = clampedX;
+      let adjustedY = pos.y;
+      
+      // Check for overlaps with previously processed platforms
+      for (let i = 0; i < index; i++) {
+        const otherPos = positions[i];
+        const horizontalDistance = Math.abs(adjustedX - otherPos.x);
+        const verticalDistance = Math.abs(adjustedY - otherPos.y);
+        
+        // If platforms are too close horizontally and vertically
+        if (horizontalDistance < platformWidth + 30 && verticalDistance < 50) {
+          // Adjust Y position to create layered effect
+          adjustedY = otherPos.y + (index % 2 === 0 ? 50 : -50);
+        }
+      }
+      
+      return { x: adjustedX, y: adjustedY };
+    });
+  }
+
+  private createQuestionDisplay(question: Question, customY?: number) {
     const padding = 20;
     const maxWidth = this.scene.cameras.main.width - padding * 2;
+    // Position question display above platforms when custom Y is provided
+    const displayY = customY !== undefined ? customY - 120 : 60;
     
     this.questionBackground = this.scene.add.rectangle(
       this.scene.cameras.main.width / 2,
-      60,
+      displayY,
       maxWidth,
       80,
       0xFFFFFF,
@@ -169,9 +306,15 @@ export default class PlatformSystem {
     );
     this.questionBackground.setStrokeStyle(2, 0x6F47EB, 1);
     
+    // For infinite platformer, make question follow camera
+    if (customY !== undefined) {
+      this.questionBackground.setScrollFactor(0);
+      this.questionBackground.setDepth(1500);
+    }
+    
     this.questionText = this.scene.add.text(
       this.scene.cameras.main.width / 2,
-      60,
+      displayY,
       question.question,
       {
         fontSize: '18px',
@@ -182,6 +325,12 @@ export default class PlatformSystem {
         wordWrap: { width: maxWidth - 40 }
       }
     ).setOrigin(0.5);
+    
+    // Make question text follow camera for infinite platformer
+    if (customY !== undefined) {
+      this.questionText.setScrollFactor(0);
+      this.questionText.setDepth(1501);
+    }
     
     const difficultyColor = this.getDifficultyColor(question.difficulty);
     const difficultyBadge = this.scene.add.rectangle(
@@ -242,15 +391,24 @@ export default class PlatformSystem {
     if (platformInfo) {
       this.animatePlatformSelection(platform);
       
+      // Give upward boost for correct answers
+      if (platformInfo.isCorrect) {
+        const boostVelocity = -400; // Strong upward boost
+        player.setVelocityY(boostVelocity);
+        
+        // Create visual effect for boost
+        this.createBoostEffect(player.x, player.y);
+      }
+      
       // Emit event to game scene
       this.scene.events.emit('answer-selected', {
         platform: platformInfo,
         isCorrect: platformInfo.isCorrect
       });
       
-      // Clear platforms after a delay
+      // Clear only question platforms after a delay, keep regular climbing platforms
       this.scene.time.delayedCall(1000, () => {
-        this.clearPlatforms();
+        this.clearQuestionPlatforms();
       });
     }
   }
@@ -296,6 +454,35 @@ export default class PlatformSystem {
     
     this.answerTexts.forEach(text => text.destroy());
     this.answerTexts = [];
+  }
+
+  private clearAnswerTexts() {
+    this.answerTexts.forEach(text => text.destroy());
+    this.answerTexts = [];
+  }
+
+  private clearQuestionPlatforms() {
+    // Remove platforms that are question platforms (have platformInfo) or approach platforms
+    const platformsToRemove: Phaser.Physics.Arcade.Sprite[] = [];
+    
+    this.platforms.children.entries.forEach(platform => {
+      const sprite = platform as Phaser.Physics.Arcade.Sprite;
+      const platformInfo = sprite.getData('platformInfo');
+      const platformType = sprite.getData('type');
+      
+      // Remove question platforms and approach platforms
+      if (platformInfo || platformType === 'approach') {
+        platformsToRemove.push(sprite);
+      }
+    });
+    
+    platformsToRemove.forEach(platform => {
+      this.platforms.remove(platform);
+      platform.destroy();
+    });
+    
+    // Clear platformData array as it only contains question platforms
+    this.platformData = [];
   }
 
   private clearQuestion() {
@@ -683,6 +870,42 @@ const MIN_VERTICAL_SPACING = 40;   // pixels
         onComplete: () => particle.destroy()
       });
     }
+  }
+
+  private createBoostEffect(x: number, y: number) {
+    // Create upward boost particles
+    for (let i = 0; i < 12; i++) {
+      const particle = this.scene.add.circle(x, y, 4, 0x6F47EB);
+      
+      const velocityX = Phaser.Math.Between(-50, 50);
+      const velocityY = Phaser.Math.Between(-200, -100);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: x + velocityX,
+        y: y + velocityY * 2,
+        alpha: 0,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        duration: 800,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+    
+    // Create boost ring effect
+    const boostRing = this.scene.add.circle(x, y, 20, 0x6F47EB, 0);
+    boostRing.setStrokeStyle(3, 0x6F47EB);
+    
+    this.scene.tweens.add({
+      targets: boostRing,
+      scaleX: 3,
+      scaleY: 3,
+      alpha: 0,
+      duration: 600,
+      ease: 'Power2.easeOut',
+      onComplete: () => boostRing.destroy()
+    });
   }
 
   private spawnPatrollingEnemy(platformX: number, platformY: number, platformWidth: number) {
